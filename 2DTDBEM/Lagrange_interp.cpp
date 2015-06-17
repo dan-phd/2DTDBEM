@@ -1,7 +1,10 @@
 #include "Lagrange_interp.h"
 
-
 CLagrange_interp::CLagrange_interp(void)
+{
+}
+
+CLagrange_interp::~CLagrange_interp(void)
 {
 }
 
@@ -16,31 +19,31 @@ CLagrange_interp::CLagrange_interp(const double dt, unsigned int degree)
 	MATRIX	coeffs = zeromat(degree + 1, degree + 1);
 	for (int i = 0; i<(int)degree + 1; i++)
 	{
-		VECTOR	f(1);
+		VECTOR f(1);
 		f(0) = 1;
 		for (int phi = 1; phi <= i; phi++)
 		{
-			VECTOR	vec(2);
-			vec(0) = (double)-1 / phi / dt;
-			vec(1) = 1;
-			f = conv(f, vec);
+			VECTOR vec1(2);
+			vec1(0) = (double)-1 / phi / dt;
+			vec1(1) = 1;
+			f = conv(f, vec1);
 		}
 
-		VECTOR	g(1);
+		VECTOR g(1);
 		g(0) = 1;
 		for (int phi = 1; phi <= (int)degree - i; phi++)
 		{
-			VECTOR	vec(2);
-			vec(0) = (double)1 / phi / dt;
-			vec(1) = 1;
-			g = conv(g, vec);
+			VECTOR vec1(2);
+			vec1(0) = (double)1 / phi / dt;
+			vec1(1) = 1;
+			g = conv(g, vec1);
 		}
 		setrow(coeffs, i, conv(f, g));
 	}
 	m_coeffs = coeffs;
 }
 
-CLagrange_interp	CLagrange_interp::pad_coeffs(CLagrange_interp& varargin)
+CLagrange_interp CLagrange_interp::pad_coeffs(CLagrange_interp& varargin)
 {
 	CLagrange_interp	varargout = varargin;
 	// pad columns
@@ -58,7 +61,7 @@ CLagrange_interp	CLagrange_interp::pad_coeffs(CLagrange_interp& varargin)
 	return	varargout;
 }
 
-MATRIX	CLagrange_interp::padarray(MATRIX& mt, int padsize, const char* direction)
+MATRIX CLagrange_interp::padarray(MATRIX& mt, int padsize, const char* direction)
 {
 	int i = 0, j = 0;
 	MATRIX ret;
@@ -81,7 +84,7 @@ MATRIX	CLagrange_interp::padarray(MATRIX& mt, int padsize, const char* direction
 	return	ret;
 }
 
-VECTOR	CLagrange_interp::padarray(VECTOR& vt, const int padsize)
+VECTOR CLagrange_interp::padarray(VECTOR& vt, const int padsize)
 {
 	VECTOR	ret = zerovec(vt.size() + padsize);
 	for (int i = 0; i<(int)vt.size(); i++)
@@ -89,11 +92,7 @@ VECTOR	CLagrange_interp::padarray(VECTOR& vt, const int padsize)
 	return	ret;
 }
 
-CLagrange_interp::~CLagrange_interp(void)
-{
-}
-
-void	CLagrange_interp::operator=(CLagrange_interp& other)
+void CLagrange_interp::operator=(CLagrange_interp& other)
 {
 	CPiecewisePol::operator=(other);
 

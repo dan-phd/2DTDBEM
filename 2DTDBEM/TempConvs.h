@@ -9,5 +9,11 @@ public:
 	~CTempConvs(void);
 
 	VECTOR	dotdiv(VECTOR& a, VECTOR& b);
-	BOOL	TempConvs(VECTOR& distances, CLagrange_interp& intTB, CLagrange_interp& TB, CLagrange_interp& dTB, VECTOR& Fh, VECTOR& Fs, VECTOR& dF);
+	void	compute(VECTOR& distances,
+				CLagrange_interp& intTB,
+				CLagrange_interp& TB,
+				CLagrange_interp& dTB,
+				VECTOR& Fh,
+				VECTOR& Fs,
+				VECTOR& dF);
 };

@@ -5,6 +5,10 @@ CPiecewisePol::CPiecewisePol(void)
 {
 }
 
+CPiecewisePol::~CPiecewisePol(void)
+{
+}
+
 //Constructor
 CPiecewisePol::CPiecewisePol(VECTOR partition, MATRIX coeffs, UINT degree)
 {
@@ -13,12 +17,8 @@ CPiecewisePol::CPiecewisePol(VECTOR partition, MATRIX coeffs, UINT degree)
 	m_degree = degree;
 }
 
-CPiecewisePol::~CPiecewisePol(void)
-{
-}
-
 //Evaluates the piecewise polynomial at times t
-VECTOR	CPiecewisePol::eval(VECTOR& t)
+VECTOR CPiecewisePol::eval(VECTOR& t)
 {
 	VECTOR	y = zerovec(t.size());
 
@@ -34,7 +34,7 @@ VECTOR	CPiecewisePol::eval(VECTOR& t)
 }
 
 //Shift function using k (includes dt) and scale using p, to obtain T(k+pt)
-void	CPiecewisePol::translate(const double k, const int p)
+void CPiecewisePol::translate(const double k, const int p)
 {
 	if (p == 0)
 		return;
@@ -48,9 +48,9 @@ void	CPiecewisePol::translate(const double k, const int p)
 		q(0) = m_coeffs(i, 0);
 		for (j = 1; j<(int)eff_degree; j++)
 		{
-			VECTOR	vec(2);
-			vec(0) = p; vec(1) = k;
-			q = conv(vec, q);
+			VECTOR	vec1(2);
+			vec1(0) = p; vec1(1) = k;
+			q = conv(vec1, q);
 			q(q.size() - 1) += m_coeffs(i, j);
 		}
 		setrow(new_coeffs, i, q);
@@ -69,7 +69,7 @@ void	CPiecewisePol::translate(const double k, const int p)
 	m_coeffs = new_coeffs;
 }
 
-void	CPiecewisePol::diff()
+void CPiecewisePol::diff()
 {
 	MATRIX	coeffs = zeromat(m_coeffs.n_rows, m_coeffs.n_cols - 1);
 	// 	//Resize the coefficient matrix so there is 1 less coefficient in each partition
@@ -85,10 +85,9 @@ void	CPiecewisePol::diff()
 	m_coeffs = coeffs;
 }
 
-void	CPiecewisePol::integrate()
+void CPiecewisePol::integrate()
 {
 	//Divide each coefficient by its degree+1
-	//obj.m_coeffs = bsxfun(@rdivide,obj.coeffs,self.degree+1:-1:1);
 	MATRIX	coeffs = zeromat(m_coeffs.n_rows + 1, m_coeffs.n_cols + 1);
 	VECTOR	partition = zerovec(m_partition.size() + 1);
 	for (int i = 0; i<(int)m_partition.size(); i++)
@@ -96,14 +95,13 @@ void	CPiecewisePol::integrate()
 	int i, j;
 	for (i = 0; i<(int)m_coeffs.n_rows; i++)
 		for (j = 0; j<(int)m_coeffs.n_cols; j++)
-		{
 			coeffs(i, j) = m_coeffs(i, j) / (m_coeffs.n_cols - j);
-		}
+
 	//Make sure the end partition goes to infinity
 	coeffs(m_degree + 1, m_degree + 1) = 0;
+
 	//Since this function will be smoother, compute the extra
-	//(constant) coefficient for each polynomial using initial condition
-	//that the very beginning will always be 0
+	//(constant) coefficient for each polynomial using initial condition, f_x
 	double	f_x = 0;
 	for (int i = 0; i<(int)m_partition.size(); i++)
 	{
@@ -141,7 +139,7 @@ VECTOR	CPiecewisePol::zerovec(const UINT size)
 }
 
 //Get a row vector from matrix 
-VECTOR	CPiecewisePol::getrow(const MATRIX& mt, const UINT	row)
+VECTOR CPiecewisePol::getrow(const MATRIX& mt, const UINT	row)
 {
 	VECTOR	ret(mt.n_cols);
 	for (int i = 0; i<(int)ret.size(); i++)
@@ -150,21 +148,21 @@ VECTOR	CPiecewisePol::getrow(const MATRIX& mt, const UINT	row)
 }
 
 //Set a row vector to matrix
-ErrorCode	CPiecewisePol::setrow(MATRIX& mt, const UINT row, const VECTOR& rowvec)
+bool CPiecewisePol::setrow(MATRIX& mt, const UINT row, const VECTOR& rowvec)
 {
 	if (mt.n_cols != rowvec.size())
 	{
-		MSG("Error!");
-		return	MAT_ERR;
+		printf("Error setting row!");
+		return false;
 	}
 	for (int i = 0; i<(int)rowvec.size(); i++)
 		mt(row, i) = rowvec(i);
-	return	NO_ERR;
+	return true;
 }
 
 
 //Create zero matrix
-MATRIX	CPiecewisePol::zeromat(const UINT size1, const UINT size2)
+MATRIX CPiecewisePol::zeromat(const UINT size1, const UINT size2)
 {
 	MATRIX	ret(size1, size2);
 	for (int i = 0; i<(int)size1; i++)
@@ -174,17 +172,17 @@ MATRIX	CPiecewisePol::zeromat(const UINT size1, const UINT size2)
 }
 
 //Flip vector ,for example [1 2 3]-->[3 2 1]
-void	CPiecewisePol::flipdim(VECTOR& vec)
+void CPiecewisePol::flipdim(VECTOR& vec1)
 {
-	for (int i = 0; i<(int)vec.size() / 2; i++)
+	for (int i = 0; i<(int)vec1.size() / 2; i++)
 	{
-		double tmp = vec(i);
-		vec(i) = vec(vec.size() - i - 1);
-		vec(vec.size() - i - 1) = tmp;
+		double tmp = vec1(i);
+		vec1(i) = vec1(vec1.size() - i - 1);
+		vec1(vec1.size() - i - 1) = tmp;
 	}
 }
 
-void	CPiecewisePol::flipdim(MATRIX& mt, UINT dim)
+void CPiecewisePol::flipdim(MATRIX& mt, UINT dim)
 {
 	if (dim == 1)//row
 	{
@@ -211,7 +209,7 @@ void	CPiecewisePol::flipdim(MATRIX& mt, UINT dim)
 }
 
 //Get polynomial derivation
-VECTOR	CPiecewisePol::polyder(VECTOR& poly)
+VECTOR CPiecewisePol::polyder(VECTOR& poly)
 {
 	VECTOR	ret = zerovec(poly.size() - 1);
 	for (int i = 0; i<(int)poly.size() - 1; i++)
@@ -220,7 +218,7 @@ VECTOR	CPiecewisePol::polyder(VECTOR& poly)
 }
 
 //Get polynomial value
-double	CPiecewisePol::polyval(VECTOR& poly, const double x)
+double CPiecewisePol::polyval(VECTOR& poly, const double x)
 {
 	double ret = 0;
 	for (int i = 0; i<(int)poly.size(); i++)
@@ -229,7 +227,7 @@ double	CPiecewisePol::polyval(VECTOR& poly, const double x)
 }
 
 //Create vector from begin,end and step values
-VECTOR	CPiecewisePol::makevec(const double begin, const double end, const double step)
+VECTOR CPiecewisePol::makevec(const double begin, const double end, const double step)
 {
 	int size = int((end - begin) / step + 1);
 	VECTOR	ret(size);
@@ -238,7 +236,7 @@ VECTOR	CPiecewisePol::makevec(const double begin, const double end, const double
 	return	ret;
 }
 
-void	CPiecewisePol::operator=(CPiecewisePol& other)
+void CPiecewisePol::operator=(CPiecewisePol& other)
 {
 	this->m_partition = other.m_partition;
 	this->m_coeffs = other.m_coeffs;

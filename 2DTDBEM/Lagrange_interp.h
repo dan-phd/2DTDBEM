@@ -2,6 +2,7 @@
 #include "piecewisepol.h"
 
 class CLagrange_interp :
+	// inheritance
 	public CPiecewisePol
 {
 public:
