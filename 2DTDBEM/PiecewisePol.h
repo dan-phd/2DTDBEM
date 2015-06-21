@@ -32,5 +32,5 @@ public:
 
 	static	MATRIX		zeromat(const UINT size1, const UINT size2);
 
-	virtual	void		operator=(CPiecewisePol& other);
+	CPiecewisePol*		operator=(const CPiecewisePol& other);
 };

@@ -25,6 +25,7 @@ Zmatrices::Zmatrices(UINT N_T, double dt, GEOMETRY& ZGegeometry, double c)
 	z_inner_points = 4;
 	N_E = (UINT)ZGegeometry.size();
 
+	cheat = false;
 	status_int = 100;
 }
 

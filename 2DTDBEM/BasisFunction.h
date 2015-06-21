@@ -1,8 +1,7 @@
 #pragma once
-#include "piecewisepol.h"
+#include "PiecewisePol.h"
 
-class CBasisFunction :
-	public CPiecewisePol
+class CBasisFunction: public CPiecewisePol
 {
 public:
 	CBasisFunction(void);

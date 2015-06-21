@@ -1,5 +1,5 @@
 #pragma once
-#include "piecewisepol.h"
+#include "PiecewisePol.h"
 
 class CLagrange_interp :
 	// inheritance
@@ -18,5 +18,5 @@ public:
 	MATRIX				padarray(MATRIX& mt, const int padsize, const char* direction);
 	VECTOR				padarray(VECTOR& vt, const int padsize);
 
-	void	operator=(CLagrange_interp& other);
+	CLagrange_interp*	operator=(const CLagrange_interp& other);
 };

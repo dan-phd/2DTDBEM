@@ -5,13 +5,11 @@
 #include "Lagrange_interp.h"
 #include "TempConvs.h"
 #include "matio.h"
-#include "windows.h"		// for timing
+#include <time.h>
 #include "Zmatrices.h"
 
-typedef unsigned long DWORD;
-
 void CreateStruct(mat_t **file_ptr, matvar_t **struct_in,
-	char *filename, const char *mat_name,
+	const char *filename, const char *mat_name,
 	const char **fieldnames, unsigned int nfields)
 {
 	mat_t *file_p = Mat_CreateVer(filename, NULL, MAT_FT_DEFAULT);
@@ -72,7 +70,7 @@ void FinishStruct(mat_t **file_ptr, matvar_t **struct_in)
 	Mat_Close(*file_ptr);
 }
 
-BOOL ReadGeometry(GEOMETRY& geometry, char* fname)
+bool ReadGeometry(GEOMETRY& geometry, const char* fname)
 {
 	mat_t *matfp = NULL;
 	matvar_t *matvar = NULL, *tmp = NULL;
@@ -81,7 +79,7 @@ BOOL ReadGeometry(GEOMETRY& geometry, char* fname)
 	if (NULL == matfp)
 	{
 		fprintf(stderr, "Error opening %s file %s\n", fname);
-		return FALSE;
+		return false;
 	}
 	EDGE edge;
 	int index = 0;
@@ -91,7 +89,7 @@ BOOL ReadGeometry(GEOMETRY& geometry, char* fname)
 	{
 		matvar = Mat_VarRead(matfp, matvar->name);
 		if (matvar == NULL)
-			return	FALSE;
+			return false;
 		tmp = Mat_VarGetStructFieldByName(matvar, "he_idx", index);
 		memcpy(&edge.he_idx, tmp->data, tmp->nbytes);
 		tmp = Mat_VarGetStructFieldByName(matvar, "a", index);
@@ -113,7 +111,7 @@ BOOL ReadGeometry(GEOMETRY& geometry, char* fname)
 		Mat_VarFree(tmpp[i]);
 	}
 	Mat_Close(matfp);
-	return	TRUE;
+	return true;
 }
 
 void TempConvs_example()
@@ -121,7 +119,7 @@ void TempConvs_example()
 	printf("\nComputing TempConvs example...");
 	double	c = 1;								// speed of light
 	double	dt = 0.1 / c;						// timestep
-	VECTOR P = linspace<vec>(1e-2, 1, 1e+2);    // distances
+	VECTOR P = linspace<vec>(1e-3, 1, 1e+3);    // distances
 	VECTOR P1 = P / c;
 
 	int	k[] = { 0, 1, 2, 6, 9 };		// chosen timesteps to plot
@@ -142,7 +140,7 @@ void TempConvs_example()
 	MATRIX Fh(P.size(), sizeof(k) / 4, fill::zeros);
 	MATRIX Fs(P.size(), sizeof(k) / 4, fill::zeros);
 	MATRIX dF(P.size(), sizeof(k) / 4, fill::zeros);
-	DWORD t_time;	t_time = GetTickCount();
+	clock_t t = clock();
 	for (int K = 0; K<sizeof(k) / 4; K++)
 	{
 		// Shifted time basis - shift and flip the time basis functions to get T(k*dt-t)
@@ -163,7 +161,8 @@ void TempConvs_example()
 		dF.col(K) = vdF;
 		dF = dF / c;
 	}
-	printf("\nComplete. The elapsed time is %d milliseconds\n", GetTickCount() - t_time);
+	t = clock() - t;
+	printf("\nComplete. The elapsed time is %f seconds\n\n", ((float)t) / CLOCKS_PER_SEC);
 	
 
 	// Output MAT file
@@ -180,11 +179,11 @@ void TempConvs_example()
 	FinishStruct(&matfpT, &matvar);
 }
 
-BOOL Zmatrices_example()
+bool Zmatrices_example()
 {
 	//simulation params
 	double c = 2.997924580105029e8;
-	UINT N_T = 15;
+	UINT N_T = 5;
 	double dt = 2.821273163357656e-12;
 	UINT outer_points_sp = 150;
 	UINT inner_points_sp = 151;
@@ -197,7 +196,7 @@ BOOL Zmatrices_example()
 	if (!ReadGeometry(geometry, "./input/geometry_circle.mat"))
 	{
 		fprintf(stderr, "Error opening geometry. ");
-		return FALSE;
+		return false;
 	}
 
 	// Create Z_matrices object
@@ -231,9 +230,10 @@ BOOL Zmatrices_example()
 	// do main computation
 	cube S, D, Dp, Nh, Ns;
 	printf("\n%s\n\n", "Computing operators...");
-	DWORD t_time;	t_time = GetTickCount();
+	clock_t t = clock();
 	Z_matrices.compute(S, D, Dp, Nh, Ns);
-	printf("\n\nComplete. The elapsed time is %d milliseconds\n\n", GetTickCount() - t_time);
+	t = clock() - t;
+	printf("\n\nComplete. The elapsed time is %f seconds\n\n", ((float)t) / CLOCKS_PER_SEC);
 
 	// Output MAT file as a struct that stores the operators
 	mat_t *matfpZ = NULL;
@@ -251,13 +251,13 @@ BOOL Zmatrices_example()
 	// free memory
 	S.clear(), D.clear(), Dp.clear(), Ns.clear(), Nh.clear();
 
-	return TRUE;
+	return true;
 }
 
 
 int main(int argc, char* argv[])
 {
-	//TempConvs_example();
+	TempConvs_example();
 
 	if (!Zmatrices_example()){ return -1; }
 

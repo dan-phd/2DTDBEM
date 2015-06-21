@@ -78,10 +78,10 @@ private:
 	MATRIX	bsxPlus(POINT2D a, POINT2D b, VECTOR& s);
 	MATRIX	create_index_table(int num_segments, int N_E);
 	MATRIX	Perform_quadrature(CustomData& m_data, MATRIX& m_mat);
-	MATRIX **	CreateMatrix(int i, int j);
+	MATRIX** CreateMatrix(int i, int j);
 
 	//properties:
-	bool cheat = false;
+	bool cheat;
 	POINT2D a_m, b_m, t_m, n_m, a_n, b_n, t_n, n_n;
 	double l_m, l_n;
 	GEOMETRY z_geom_obj;

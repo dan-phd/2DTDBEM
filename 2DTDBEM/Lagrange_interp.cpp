@@ -38,7 +38,7 @@ CLagrange_interp::CLagrange_interp(const double dt, unsigned int degree)
 			vec1(1) = 1;
 			g = conv(g, vec1);
 		}
-		setrow(coeffs, i, conv(f, g));
+		setrow(coeffs, (UINT)i, conv(f, g));
 	}
 	m_coeffs = coeffs;
 }
@@ -92,9 +92,11 @@ VECTOR CLagrange_interp::padarray(VECTOR& vt, const int padsize)
 	return	ret;
 }
 
-void CLagrange_interp::operator=(CLagrange_interp& other)
+CLagrange_interp* CLagrange_interp::operator=(const CLagrange_interp& other)
 {
 	CPiecewisePol::operator=(other);
 
 	this->m_dt = other.m_dt;
+
+	return(this);
 }
