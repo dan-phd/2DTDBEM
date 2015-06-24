@@ -7,13 +7,13 @@ class CLagrange_interp :
 {
 public:
 	CLagrange_interp(void);
-	CLagrange_interp(const double dt, unsigned int degree);
+	CLagrange_interp(const double dt, int degree);
 	~CLagrange_interp(void);
 
 	//Properties
 	double	m_dt;
 
-	//Function
+	//Functions
 	CLagrange_interp	pad_coeffs(CLagrange_interp& varargin);
 	MATRIX				padarray(MATRIX& mt, const int padsize, const char* direction);
 	VECTOR				padarray(VECTOR& vt, const int padsize);

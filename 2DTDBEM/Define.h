@@ -2,6 +2,11 @@
 
 #pragma once
 
+// Check if we're running on Windows
+#if defined(_WIN32) || defined(WIN32)
+#define OS_WIN
+#endif
+
 #include <stdio.h>
 #include <math.h>
 #include <armadillo>

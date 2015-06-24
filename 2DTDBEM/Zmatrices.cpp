@@ -2,6 +2,7 @@
 #include "Lagrange_interp.h"
 #include "BasisFunction.h"
 #include "TempConvs.h"
+#include <omp.h>
 
 Zmatrices::Zmatrices(void)
 {
@@ -224,7 +225,7 @@ void Zmatrices::Z_calc(VECTOR& s_i, VECTOR& s_o, CustomData& G_dd, CustomData& G
 	rho_mn.set_size(outer_quad_points, inner_quad_points, 2);
 	for (int i = 0; i < 2; i++)
 	{
-		MATRIX tmp;		tmp.set_size(outer_quad_points, inner_quad_points);
+		MATRIX tmp(outer_quad_points, inner_quad_points);
 		for (int j = 0; j < inner_quad_points; j++)
 		{
 			tmp.col(j) = rho_m.col(i) - rho_n(j, i);
@@ -236,10 +237,15 @@ void Zmatrices::Z_calc(VECTOR& s_i, VECTOR& s_o, CustomData& G_dd, CustomData& G
 	MATRIX P = sqrt(tmp);
 
 	// Compute the temporal convolutions
-	VECTOR t_Fh, t_F, t_dF;
 	CTempConvs	tempconvs;
 	VECTOR t_P = reshape(P, numel(P), 1) / z_c;
-	tempconvs.compute(t_P, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D, t_Fh, t_F, t_dF);
+	VECTOR t_Fh(t_P.size(), fill::zeros), t_F(t_P.size(), fill::zeros), t_dF(t_P.size(), fill::zeros);
+
+//#pragma omp parallel sections private(tempconvs,t_P)
+	{
+//#pragma omp section
+		tempconvs.compute2(t_P, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D, t_Fh, t_F, t_dF);
+	}
 
 	MATRIX Fh = reshape(t_Fh, outer_quad_points, inner_quad_points);
 	MATRIX F = reshape(t_F, outer_quad_points, inner_quad_points);
@@ -352,9 +358,22 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 	timeBasis_Ns = tmp_Lag.pad_coeffs(timeBasis_Ns);
 	timeBasis_D = tmp_Lag.pad_coeffs(timeBasis_D);
 
+	//omp setup
+	int nthreads, tid;
+	#pragma omp parallel private (tid)
+	{
+		tid = omp_get_thread_num();
+		if (tid == 0)
+		{
+			nthreads = omp_get_num_threads();
+			printf("\nTotal threads = %i\n\n", nthreads);
+		}
+	}
+	omp_set_num_threads(4);
+
 	//Loop over all segments so they all act as observation and source ( m and n) for all time steps
-	int max_n(N_E);
-	for (UINT k = 0; k < z_N_T; k++){
+	int k(0), m(0), n(0), max_n(N_E);
+	for (k = 0; k < z_N_T; k++){
 
 		//Shifted time basis - shift and flip the time basis functions to get T(k*dt - t)
 		shiftedTB_D = timeBasis_D;
@@ -371,7 +390,9 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 		MATRIX** coeffs_s = CreateMatrix(N_E, N_E);
 		MATRIX** coeffs_dp = CreateMatrix(N_E, N_E);
 
-		for (UINT m = 0; m < N_E; m++){
+//#pragma omp parallel for default(shared) private(m,n) schedule(dynamic)
+//#pragma omp parallel for private(n)
+		for (m = 0; m < N_E; m++){
 
 			//Find geometry around observation point
 			EDGE tmp_edge = z_geom_obj[m];
@@ -382,10 +403,12 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 			n_m = tmp_edge.n;
 
 			cheat ? max_n = (m == 0) ? N_E : 1 : false;
-			for (int n = 0; n < max_n; n++){
+			//Zmatrices zcopy = *this;
+//#pragma omp parallel for default(shared) private(zcopy,tmp_edge)
+			for (n = 0; n < max_n; n++){
 
 				//Find geometry around source point
-				EDGE tmp_edge = z_geom_obj[n];
+				tmp_edge = z_geom_obj[n];
 				a_n = tmp_edge.a;
 				b_n = tmp_edge.b;
 				l_n = tmp_edge.l;
@@ -394,7 +417,7 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 
 				//When dealing with singularities at self patch and neighbouring edges, increase number of quadrature points
 				if (n == (m + 1) % N_E || n == m || n == (m + N_E - 1) % N_E){
-					
+
 					//change si, s0, inner points, outer points, and Gcoeffs
 					Z_calc(si_sp, s0_sp, Gcoeffs_dd_sp, Gcoeffs_SZ_sp, Gcoeffs_ZS_sp, Gcoeffs_SS_sp, Gcoeffs_ZZ_sp,
 						coeffs_nh[m][n], coeffs_ns[m][n], coeffs_d[m][n], coeffs_s[m][n], coeffs_dp[m][n]);
@@ -409,20 +432,26 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 			} // end n
 		} // end m
 
-		if (cheat)
+//#pragma omp flush
+
+//#pragma omp single
 		{
-			SPD_cheat_coeffs(coeffs_s, N_E, N_E);
-			SPD_cheat_coeffs(coeffs_nh, N_E, N_E);
-			SPD_cheat_coeffs(coeffs_ns, N_E, N_E);
-			SPD_cheat_coeffs(coeffs_d, N_E, N_E);
-			SPD_cheat_coeffs(coeffs_dp, N_E, N_E);
+			if (cheat)
+			{
+				SPD_cheat_coeffs(coeffs_s, N_E, N_E);
+				SPD_cheat_coeffs(coeffs_nh, N_E, N_E);
+				SPD_cheat_coeffs(coeffs_ns, N_E, N_E);
+				SPD_cheat_coeffs(coeffs_d, N_E, N_E);
+				SPD_cheat_coeffs(coeffs_dp, N_E, N_E);
+			}
 		}
 
 		//coeffs_s[0][0].print("0:"); coeffs_s[1][1].print("1:");
 
 		// use integrated convolution values along with basis/test function coefficients
 		// and index table to compute final matrix entries
-		for (UINT m = 0; m < N_E; m++){
+//#pragma omp parallel for
+		for (m = 0; m < N_E; m++){
 
 			//current test edges
 			VECTOR index_test_Z = idx_test_Z.row(m).t();
@@ -442,7 +471,7 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 			TCd = test_coeffs_d.rows(m * num_test_segments_d, (m + 1) * num_test_segments_d - 1);
 
 			cheat ? max_n = (m == 0) ? N_E : 1 : false;
-			for (int n = 0; n < max_n; n++){
+			for (n = 0; n < max_n; n++){
 				//current basis edges
 				VECTOR index_basis_Z = idx_basis_Z.row(n).t();
 				VECTOR index_basis_S = idx_basis_S.row(n).t();
@@ -469,24 +498,33 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 
 		} // end m
 
-		if (cheat)
+//#pragma omp flush
+
+//#pragma omp single
 		{
-			SPD_cheat(S.slice(k));
-			SPD_cheat(Nh.slice(k));
-			SPD_cheat(Ns.slice(k));
-			SPD_cheat(D.slice(k));
-			SPD_cheat(Dp.slice(k));
+			if (cheat)
+			{
+				SPD_cheat(S.slice(k));
+				SPD_cheat(Nh.slice(k));
+				SPD_cheat(Ns.slice(k));
+				SPD_cheat(D.slice(k));
+				SPD_cheat(Dp.slice(k));
+			}
 		}
 
-		//Free memory
-		deletepMat(coeffs_d, N_E);
-		deletepMat(coeffs_s, N_E);
-		deletepMat(coeffs_dp, N_E);
-		deletepMat(coeffs_ns, N_E);
-		deletepMat(coeffs_nh, N_E);
+//#pragma omp single
+		{
+			//Free memory
+			deletepMat(coeffs_d, N_E);
+			deletepMat(coeffs_s, N_E);
+			deletepMat(coeffs_dp, N_E);
+			deletepMat(coeffs_ns, N_E);
+			deletepMat(coeffs_nh, N_E);
 
-		//Status
-		(k % status_int == 0) ? printf("%i ", k) : false;
+			//Status
+			(k % status_int == 0) ? printf("%i ", k) : false;
+			fflush(stdout);
+		}
 		
 	} //end k
 

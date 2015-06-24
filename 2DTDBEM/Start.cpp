@@ -5,8 +5,33 @@
 #include "Lagrange_interp.h"
 #include "TempConvs.h"
 #include "matio.h"
-#include <time.h>
 #include "Zmatrices.h"
+#ifdef OS_WIN
+#include <time.h>
+void start_timing(clock_t& t)
+{
+	t = clock();
+}
+void finish_timing(clock_t& t)
+{
+	t = clock() - t;
+	printf("\n\nComplete. The elapsed time is %f seconds\n\n",
+		((float)t) / CLOCKS_PER_SEC);
+}
+#else
+#include <sys/time.h>	// this isn't in MSVC
+void start_timing(struct timeval *start_time)
+{
+	gettimeofday(start_time,NULL);
+}
+void finish_timing(struct timeval *start_time)
+{
+	struct timeval end_time;
+	gettimeofday(&end_time,NULL);
+	printf("\n\nComplete. The elapsed time is %f seconds\n\n",
+		end_time.tv_sec-start_time->tv_sec+(end_time.tv_usec-start_time->tv_usec)/1e6);
+}
+#endif
 
 void CreateStruct(mat_t **file_ptr, matvar_t **struct_in,
 	const char *filename, const char *mat_name,
@@ -119,7 +144,7 @@ void TempConvs_example()
 	printf("\nComputing TempConvs example...");
 	double	c = 1;								// speed of light
 	double	dt = 0.1 / c;						// timestep
-	VECTOR P = linspace<vec>(1e-3, 1, 1e+3);    // distances
+	VECTOR P = linspace<vec>(1e-1, 1, 1e+1);    // distances
 	VECTOR P1 = P / c;
 
 	int	k[] = { 0, 1, 2, 6, 9 };		// chosen timesteps to plot
@@ -140,7 +165,15 @@ void TempConvs_example()
 	MATRIX Fh(P.size(), sizeof(k) / 4, fill::zeros);
 	MATRIX Fs(P.size(), sizeof(k) / 4, fill::zeros);
 	MATRIX dF(P.size(), sizeof(k) / 4, fill::zeros);
-	clock_t t = clock();
+
+	// start timing
+	#ifdef OS_WIN
+	clock_t t;
+	#else
+	struct timeval * t = new struct timeval;
+	#endif
+	start_timing(t);
+
 	for (int K = 0; K<sizeof(k) / 4; K++)
 	{
 		// Shifted time basis - shift and flip the time basis functions to get T(k*dt-t)
@@ -150,19 +183,19 @@ void TempConvs_example()
 		shiftedTB_Nh.translate(k[K] * dt, -1);
 		CLagrange_interp	shiftedTB_Ns = timeBasis_Ns;
 		shiftedTB_Ns.translate(k[K] * dt, -1);
+
 		// Compute the temporal convolutions
-		VECTOR	vFh, vFs, vdF;
+		VECTOR vFh(P.size(), fill::zeros), vFs(P.size(), fill::zeros), vdF(P.size(), fill::zeros);
 		CTempConvs tempconvs;
 		P /= c;
-		tempconvs.compute(P1, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D, vFh, vFs, vdF);
+		tempconvs.compute2(P1, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D, vFh, vFs, vdF);
 
 		Fh.col(K) = vFh;
 		Fs.col(K) = vFs;
 		dF.col(K) = vdF;
 		dF = dF / c;
 	}
-	t = clock() - t;
-	printf("\nComplete. The elapsed time is %f seconds\n\n", ((float)t) / CLOCKS_PER_SEC);
+	finish_timing(t);
 	
 
 	// Output MAT file
@@ -170,7 +203,7 @@ void TempConvs_example()
 	matvar_t *matvar=NULL;
 	const char *fieldnames[3] = { "Fh", "Fs", "dF" };
 	unsigned nfields = 3;
-	CreateStruct(&matfpT, &matvar, "./results/TempConvs_example.mat", "TempConvs", fieldnames, nfields);
+	CreateStruct(&matfpT, &matvar, "./results/TempConvs_example.mat", "TempConvs2", fieldnames, nfields);
 	
 	InsertMatrixIntoStruct(&matvar, "Fh", Fh);
 	InsertMatrixIntoStruct(&matvar, "Fs", Fs);
@@ -183,17 +216,17 @@ bool Zmatrices_example()
 {
 	//simulation params
 	double c = 2.997924580105029e8;
-	UINT N_T = 5;
-	double dt = 2.821273163357656e-12;
-	UINT outer_points_sp = 150;
-	UINT inner_points_sp = 151;
-	UINT outer_points = 10;
-	UINT inner_points = 11;
+	UINT N_T = 8000;
+	double dt = 4.079437103128263e-11;
+	UINT outer_points_sp = 250;
+	UINT inner_points_sp = 251;
+	UINT outer_points = 100;
+	UINT inner_points = 101;
 	UINT Lagrange_degree = 1;
 
 	// Load the geometry
 	GEOMETRY geometry;
-	if (!ReadGeometry(geometry, "./input/geometry_circle.mat"))
+	if (!ReadGeometry(geometry, "./input/geometry_circle24.mat"))
 	{
 		fprintf(stderr, "Error opening geometry. ");
 		return false;
@@ -201,15 +234,15 @@ bool Zmatrices_example()
 
 	// Create Z_matrices object
 	Zmatrices Z_matrices = Zmatrices(N_T, dt, geometry, c);
-	Z_matrices.status_int = 1;
-	//Z_matrices.use_cheat();
+	Z_matrices.status_int = 100;		// define when status indicator updates
+	Z_matrices.use_cheat();
 
 	//	 Basis and test functions applied to each segment
 	//	 S = transverse plane, Z = z-directed, d = S divergence
 	CBasisFunction BasisFunction;
 	Z_matrices.basis_function_Z = BasisFunction.createSquare(geometry, true);
-	Z_matrices.basis_function_S = BasisFunction.createHat(geometry, false);
-	Z_matrices.test_function_Z = BasisFunction.createSquare(geometry, true);
+	Z_matrices.basis_function_S = BasisFunction.createHat(geometry, true);
+	Z_matrices.test_function_Z = BasisFunction.createSquare(geometry, false);
 	Z_matrices.test_function_S = BasisFunction.createHat(geometry, false);
 
 	// Lagrange interpolators (temporal basis functions)
@@ -227,20 +260,24 @@ bool Zmatrices_example()
 	Z_matrices.z_outer_points = outer_points;
 	Z_matrices.z_inner_points = inner_points;
 
-	// do main computation
+	// do main computation and time
 	cube S, D, Dp, Nh, Ns;
 	printf("\n%s\n\n", "Computing operators...");
-	clock_t t = clock();
+	#ifdef OS_WIN
+	clock_t t;
+	#else
+	struct timeval * t = new struct timeval;
+	#endif
+	start_timing(t);
 	Z_matrices.compute(S, D, Dp, Nh, Ns);
-	t = clock() - t;
-	printf("\n\nComplete. The elapsed time is %f seconds\n\n", ((float)t) / CLOCKS_PER_SEC);
+	finish_timing(t);
 
 	// Output MAT file as a struct that stores the operators
 	mat_t *matfpZ = NULL;
 	matvar_t *matvar = NULL;
 	const unsigned nfields = 5;
 	const char *fieldnames[nfields] = { "S", "D", "Dp", "Nh", "Ns" };
-	CreateStruct(&matfpZ, &matvar, "./results/Zmatrices1.mat", "Z_matrices", fieldnames, nfields);
+	CreateStruct(&matfpZ, &matvar, "./results/Zmatrices1.mat", "Z_Matrices", fieldnames, nfields);
 	InsertCubeIntoStruct(&matvar, "S", S);
 	InsertCubeIntoStruct(&matvar, "D", D);
 	InsertCubeIntoStruct(&matvar, "Dp", Dp);

@@ -33,7 +33,7 @@ public:
 class Zmatrices
 {
 public:
-	//constructor
+	//constructors
 	Zmatrices(void);
 	Zmatrices(UINT N_T, double dt, GEOMETRY& ZGegeometry, double c);
 	~Zmatrices(void);
