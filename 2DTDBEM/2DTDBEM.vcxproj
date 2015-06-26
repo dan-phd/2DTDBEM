@@ -265,6 +265,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MATIO_ROOT)\include;$(ARMADILLO_ROOT)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OpenMPSupport>true</OpenMPSupport>
+      <BrowseInformation>true</BrowseInformation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -274,6 +275,9 @@
       <AdditionalLibraryDirectories>$(ARMADILLO_ROOT)\examples\lib_win64;C:\build\matio-1.5.2\visual_studio\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>lapack_win64_MT.lib;blas_win64_MT.lib;libmatio.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <Bscmake>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BasisFunction.cpp" />
@@ -290,6 +294,10 @@
     <ClInclude Include="PiecewisePol.h" />
     <ClInclude Include="TempConvs.h" />
     <ClInclude Include="Zmatrices.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
+    <None Include="ClassDiagram1.cd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

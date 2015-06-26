@@ -14,7 +14,20 @@
 using namespace std;
 using namespace arma;
 
-struct	POINT2D
+#define	VECTOR			vec
+#define	MATRIX			mat
+#define	GEOMETRY		vector<EDGE>
+#define	POLYMAT			vector<CPiecewisePol>
+#define POLYCUBE		vector<cube>
+
+#define INF				datum::inf
+#define NaN				1<<30
+#define PI				datum::pi
+
+typedef	unsigned int	UINT;
+
+
+struct POINT2D
 {
 	POINT2D()
 	{
@@ -31,22 +44,10 @@ struct	POINT2D
 
 struct EDGE
 {
-	unsigned int he_idx;
+	UINT he_idx;
 	POINT2D	a;
 	POINT2D	b;
 	double	l;
 	POINT2D t;
 	POINT2D n;
 };
-
-#define	VECTOR			vec
-#define	MATRIX			mat
-#define	GEOMETRY		vector<EDGE>
-#define	POLYMAT			vector<CPiecewisePol>
-#define POLYCUBE		vector<cube>
-
-#define INF				datum::inf
-#define NaN				1<<30
-#define PI				datum::pi
-
-typedef	unsigned int	UINT;

@@ -17,12 +17,12 @@ public:
 				VECTOR& dF);
 
 	void	compute2(VECTOR& distances,
-		CLagrange_interp& intTB,
-		CLagrange_interp& TB,
-		CLagrange_interp& dTB,
-		VECTOR& Fh,
-		VECTOR& Fs,
-		VECTOR& dF);
+				CLagrange_interp& intTB,
+				CLagrange_interp& TB,
+				CLagrange_interp& dTB,
+				VECTOR& Fh,
+				VECTOR& Fs,
+				VECTOR& dF);
 
 private:
 

@@ -204,6 +204,8 @@ MATRIX Zmatrices::Perform_quadrature(CustomData& m_data, MATRIX& m_mat)
 		}
 		return res;
 	}
+
+	return false;
 }
 
 //computation of single elements of all operator matrices
@@ -237,14 +239,14 @@ void Zmatrices::Z_calc(VECTOR& s_i, VECTOR& s_o, CustomData& G_dd, CustomData& G
 	MATRIX P = sqrt(tmp);
 
 	// Compute the temporal convolutions
-	CTempConvs	tempconvs;
 	VECTOR t_P = reshape(P, numel(P), 1) / z_c;
 	VECTOR t_Fh(t_P.size(), fill::zeros), t_F(t_P.size(), fill::zeros), t_dF(t_P.size(), fill::zeros);
 
 //#pragma omp parallel sections private(tempconvs,t_P)
 	{
 //#pragma omp section
-		tempconvs.compute2(t_P, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D, t_Fh, t_F, t_dF);
+		tempconvs.compute2(t_P, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D,
+			t_Fh, t_F, t_dF);
 	}
 
 	MATRIX Fh = reshape(t_Fh, outer_quad_points, inner_quad_points);
@@ -357,22 +359,10 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 	CLagrange_interp tmp_Lag = timeBasis_Nh;
 	timeBasis_Ns = tmp_Lag.pad_coeffs(timeBasis_Ns);
 	timeBasis_D = tmp_Lag.pad_coeffs(timeBasis_D);
-
-	//omp setup
-	int nthreads, tid;
-	#pragma omp parallel private (tid)
-	{
-		tid = omp_get_thread_num();
-		if (tid == 0)
-		{
-			nthreads = omp_get_num_threads();
-			printf("\nTotal threads = %i\n\n", nthreads);
-		}
-	}
-	omp_set_num_threads(4);
+	tempconvs = CTempConvs();
 
 	//Loop over all segments so they all act as observation and source ( m and n) for all time steps
-	int k(0), m(0), n(0), max_n(N_E);
+	UINT k(0), m(0), n(0), max_n(N_E);
 	for (k = 0; k < z_N_T; k++){
 
 		//Shifted time basis - shift and flip the time basis functions to get T(k*dt - t)

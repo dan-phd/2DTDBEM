@@ -6,6 +6,7 @@
 #include "TempConvs.h"
 #include "matio.h"
 #include "Zmatrices.h"
+#include <omp.h>
 #ifdef OS_WIN
 #include <time.h>
 void start_timing(clock_t& t)
@@ -95,7 +96,7 @@ void FinishStruct(mat_t **file_ptr, matvar_t **struct_in)
 	Mat_Close(*file_ptr);
 }
 
-bool ReadGeometry(GEOMETRY& geometry, const char* fname)
+bool ReadGeometry(GEOMETRY& geometry, double& dt, double& c, const char* fname)
 {
 	mat_t *matfp = NULL;
 	matvar_t *matvar = NULL, *tmp = NULL;
@@ -106,13 +107,22 @@ bool ReadGeometry(GEOMETRY& geometry, const char* fname)
 		fprintf(stderr, "Error opening %s file %s\n", fname);
 		return false;
 	}
+
+	// Get dt
+	matvar = Mat_VarRead(matfp, "dt");
+	memcpy(&dt,matvar->data,matvar->data_size);
+
+	// Get c
+	matvar = Mat_VarRead(matfp, "c");
+	memcpy(&c, matvar->data, matvar->data_size);
+
+	// Get geometry
+	matvar_t* tmpp[100];				// TODO: arbitrary max number of edges
 	EDGE edge;
 	int index = 0;
-	matvar = Mat_VarReadNext(matfp);
-	matvar_t* tmpp[100];				// TODO: arbitrary max number of edges
 	while (index<(int)matvar->dims[0])
 	{
-		matvar = Mat_VarRead(matfp, matvar->name);
+		matvar = Mat_VarRead(matfp, "geometry");
 		if (matvar == NULL)
 			return false;
 		tmp = Mat_VarGetStructFieldByName(matvar, "he_idx", index);
@@ -144,11 +154,12 @@ void TempConvs_example()
 	printf("\nComputing TempConvs example...");
 	double	c = 1;								// speed of light
 	double	dt = 0.1 / c;						// timestep
-	VECTOR P = linspace<vec>(1e-1, 1, 1e+1);    // distances
+	VECTOR P = linspace<vec>(1e-6, 1, 1e+6);    // distances
 	VECTOR P1 = P / c;
 
 	int	k[] = { 0, 1, 2, 6, 9 };		// chosen timesteps to plot
-	UINT degree = 2;					// basis degree
+	const UINT degree = 2;					// basis degree
+	CTempConvs tempconvs;
 
 	// Create the time basis functions
 	CLagrange_interp timeBasis = CLagrange_interp(dt, degree);
@@ -186,7 +197,6 @@ void TempConvs_example()
 
 		// Compute the temporal convolutions
 		VECTOR vFh(P.size(), fill::zeros), vFs(P.size(), fill::zeros), vdF(P.size(), fill::zeros);
-		CTempConvs tempconvs;
 		P /= c;
 		tempconvs.compute2(P1, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D, vFh, vFs, vdF);
 
@@ -214,28 +224,27 @@ void TempConvs_example()
 
 bool Zmatrices_example()
 {
-	//simulation params
-	double c = 2.997924580105029e8;
-	UINT N_T = 8000;
-	double dt = 4.079437103128263e-11;
-	UINT outer_points_sp = 250;
-	UINT inner_points_sp = 251;
-	UINT outer_points = 100;
-	UINT inner_points = 101;
-	UINT Lagrange_degree = 1;
-
 	// Load the geometry
 	GEOMETRY geometry;
-	if (!ReadGeometry(geometry, "./input/geometry_circle24.mat"))
+	double dt, c;
+	if (!ReadGeometry(geometry, dt, c, "./input/cyl_res24.mat"))
 	{
 		fprintf(stderr, "Error opening geometry. ");
 		return false;
 	}
 
+	//simulation params
+	UINT N_T = 5;
+	UINT outer_points_sp = 500;
+	UINT inner_points_sp = 501;
+	UINT outer_points = 150;
+	UINT inner_points = 151;
+	UINT Lagrange_degree = 1;
+
 	// Create Z_matrices object
 	Zmatrices Z_matrices = Zmatrices(N_T, dt, geometry, c);
-	Z_matrices.status_int = 100;		// define when status indicator updates
-	Z_matrices.use_cheat();
+	Z_matrices.status_int = 1;		// define when status indicator updates
+	//Z_matrices.use_cheat();
 
 	//	 Basis and test functions applied to each segment
 	//	 S = transverse plane, Z = z-directed, d = S divergence
@@ -277,7 +286,7 @@ bool Zmatrices_example()
 	matvar_t *matvar = NULL;
 	const unsigned nfields = 5;
 	const char *fieldnames[nfields] = { "S", "D", "Dp", "Nh", "Ns" };
-	CreateStruct(&matfpZ, &matvar, "./results/Zmatrices1.mat", "Z_Matrices", fieldnames, nfields);
+	CreateStruct(&matfpZ, &matvar, "./results/cyl_res24.mat", "Z_Matrices", fieldnames, nfields);
 	InsertCubeIntoStruct(&matvar, "S", S);
 	InsertCubeIntoStruct(&matvar, "D", D);
 	InsertCubeIntoStruct(&matvar, "Dp", Dp);
@@ -294,7 +303,21 @@ bool Zmatrices_example()
 
 int main(int argc, char* argv[])
 {
-	TempConvs_example();
+	//omp setup
+	int nthreads, tid;
+#pragma omp parallel private (tid)
+	{
+		tid = omp_get_thread_num();
+		if (tid == 0)
+		{
+			nthreads = omp_get_num_threads();
+			printf("\nTotal threads = %i\n\n", nthreads);
+		}
+	}
+	omp_set_num_threads(nthreads);
+
+
+	//TempConvs_example();
 
 	if (!Zmatrices_example()){ return -1; }
 

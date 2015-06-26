@@ -1,6 +1,7 @@
 #pragma once
 #include "Define.h"
 #include "Lagrange_interp.h"
+#include "TempConvs.h"
 
 enum CUSTOMDATA_TYPE{
 	MAT = 1,
@@ -86,5 +87,6 @@ private:
 	double l_m, l_n;
 	GEOMETRY z_geom_obj;
 	CLagrange_interp shiftedTB_D, shiftedTB_Nh, shiftedTB_Ns;
+	CTempConvs tempconvs;
 	UINT N_E;
 };
