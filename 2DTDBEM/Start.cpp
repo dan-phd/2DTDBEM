@@ -234,11 +234,12 @@ bool Zmatrices_example()
 	}
 
 	//simulation params
-	UINT N_T = 5;
-	UINT outer_points_sp = 500;
-	UINT inner_points_sp = 501;
-	UINT outer_points = 150;
-	UINT inner_points = 151;
+	UINT N_T = 20;
+	//c = 1; dt = 0.1;
+	UINT outer_points_sp = 250;
+	UINT inner_points_sp = 251;
+	UINT outer_points = 50;
+	UINT inner_points = 51;
 	UINT Lagrange_degree = 1;
 
 	// Create Z_matrices object

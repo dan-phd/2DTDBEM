@@ -16,13 +16,13 @@ public:
 				VECTOR& Fs,
 				VECTOR& dF);
 
-	void	compute2(VECTOR& distances,
+	void	compute2(MATRIX& distances,
 				CLagrange_interp& intTB,
 				CLagrange_interp& TB,
 				CLagrange_interp& dTB,
-				VECTOR& Fh,
-				VECTOR& Fs,
-				VECTOR& dF);
+				MATRIX& Fh,
+				MATRIX& Fs,
+				MATRIX& dF);
 
 private:
 

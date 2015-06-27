@@ -238,9 +238,9 @@ double CTempConvs::dotpow(double& a, UINT power)
 	return tmp;
 }
 
-void CTempConvs::compute2(VECTOR& P,
+void CTempConvs::compute2(MATRIX& P,
 	CLagrange_interp& intTB, CLagrange_interp& TB, CLagrange_interp& dTB,
-	VECTOR& Fh, VECTOR& Fs, VECTOR& dF )
+	MATRIX& Fh, MATRIX& Fs, MATRIX& dF)
 {
 	const UINT num_partitions( intTB.m_partition.size() - 1 );
 	const UINT num_degree( intTB.m_coeffs.n_cols - 1 );
@@ -256,7 +256,7 @@ void CTempConvs::compute2(VECTOR& P,
 		dIb = (double*)(calloc(sizeof(double), num_degree + 1));
 
 #pragma omp for schedule(static)
-		for (ii = 0; ii < (int)P.size(); ii++)
+		for (ii = 0; ii < (int)P.n_elem; ii++)
 		{
 
 			//Current distance

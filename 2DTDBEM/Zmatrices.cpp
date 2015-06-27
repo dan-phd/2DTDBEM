@@ -81,7 +81,7 @@ MATRIX Zmatrices::bsxPlus(POINT2D a, POINT2D b, VECTOR& s)
 	return res;
 }
 
-void Zmatrices::Gcoeffs_create(VECTOR& s0, VECTOR& w0, VECTOR&si, VECTOR& wi, int max_deg_test, int max_deg_basis)
+MATRIX Zmatrices::Gcoeffs_create(VECTOR& s0, VECTOR& w0, VECTOR&si, VECTOR& wi, int max_deg_test, int max_deg_basis)
 {
 	//Multiply quadrature points up to max polynomial degree
 	VECTOR tmp = max_deg_test - linspace(0, max_deg_test, max_deg_test + 1);
@@ -96,61 +96,31 @@ void Zmatrices::Gcoeffs_create(VECTOR& s0, VECTOR& w0, VECTOR&si, VECTOR& wi, in
 
 	int test_points = s0.size();
 	int basis_points = si.size();
-	m_data.type = 0;	m_data.m_cube.clear();	m_data.m_mat.clear();	m_data.m_poly.clear();
 
-	if (max_deg_test == 0 && max_deg_basis == 0)
-	{
-		m_data.m_mat.reshape(test_points, basis_points);
-		m_data.type = MAT;
-		for (int i = 0; i < basis_points; i++)
-		{
-			m_data.m_mat.col(i) = Gcoeffs_test.col(0) * Gcoeffs_basis(i, 0);
-		}
-		return;
-	}
+	MATRIX G(test_points*(max_test_deg + 1), basis_points*(max_basis_deg + 1), fill::zeros);
 
-	if (max_deg_test == 1 && max_deg_basis == 0)
+	MATRIX tmp2(test_points, basis_points);
+	for (int pm = 0; pm < max_deg_basis + 1; pm++)
 	{
-		m_data.m_cube.reshape(test_points, basis_points, max_deg_test + 1);
-		m_data.type = CUBE;
-		for (int i = 0; i < max_deg_test + 1; i++)
+		int offset_m = pm*basis_points;
+
+		for (int pn = 0; pn < max_deg_test + 1; pn++)
 		{
-			MATRIX tmp;		tmp.set_size(test_points, basis_points);
-			for (int j = 0; j < basis_points; j++)
+			int offset_n = pn*test_points;
+
+			for (int i = 0; i < basis_points; i++)
 			{
-				tmp.col(j) = Gcoeffs_test.col(i) * Gcoeffs_basis(j, 0);
+				tmp2.col(i) = Gcoeffs_test.col(pn) * Gcoeffs_basis(i, pm);
 			}
-			m_data.m_cube.slice(i) = tmp;
-		}
-		return;
-	}
-	if (max_deg_test == -1 || max_deg_basis == -1)
-	{
-		m_data.m_mat.set_size(1, 1);
-		m_data.m_mat.fill(0);
-		m_data.type = EMPTY;
-	}
-	else{
-		m_data.m_poly.clear();
-		m_data.type = POLY;
-		cube obj;
-		obj.reshape(test_points, basis_points, max_deg_test + 1);
 
-		for (int p = 0; p < max_deg_basis + 1; p++)
-		{
-			MATRIX tmp;		tmp.set_size(test_points, basis_points);
-			for (int i = 0; i < max_deg_test + 1; i++)
-			{
-				for (int j = 0; j < basis_points; j++)
-				{
-					tmp.col(j) = Gcoeffs_test.col(i) * Gcoeffs_basis(j, p);
-				}
-				obj.slice(i) = tmp;
-			}
-			m_data.m_poly.push_back(obj);
+			G(span(offset_n, offset_n + test_points-1),
+						 span(offset_m, offset_m + basis_points-1)) = tmp2;	//( span(rows),span(cols) )
 		}
-		return;
 	}
+	
+	return G;
+
+
 }
 
 // Create index table to determine which edges interact
@@ -168,53 +138,70 @@ MATRIX Zmatrices::create_index_table(int num_segments, int N_E)
 	return res;
 }
 
-MATRIX Zmatrices::Perform_quadrature(CustomData& m_data, MATRIX& m_mat)
+void Zmatrices::make_distances_lookup_table()
 {
-	
-	if (m_data.type == EMPTY)
-	{
-		MATRIX res(1, 1, fill::zeros);
-		return res;
-	}
+	//parameterise each segment for Gaussian quadrature integration
+	VECTOR s0, w0;
+	lgquad1(z_outer_points, s0, w0);
+	VECTOR si, wi;
+	lgquad1(z_inner_points, si, wi);
 
-	if (m_data.type == MAT)
-	{
-		MATRIX res(1, 1);
-		res(0, 0) = accu(m_data.m_mat % m_mat);
-		return res;
-	}
+	//Gaussian quadrature integration for singularity points
+	VECTOR s0_sp, w0_sp;
+	lgquad1(z_outer_points_sp, s0_sp, w0_sp);
+	VECTOR si_sp, wi_sp;
+	lgquad1(z_inner_points_sp, si_sp, wi_sp);
 
-	if (m_data.type == CUBE)
-	{
-		MATRIX res(m_data.m_cube.n_slices, 1);
-		for (UINT i = 0; i < m_data.m_cube.n_slices; i++)
-		{
-			res(i) = sum(sum(m_data.m_cube.slice(i) % m_mat));
-		}
-		return res;
-	}
+	//container for lookup tables
+	MATRIX **distances_ = CreateMatrix(N_E, N_E);
+	MATRIX **over_dnp_ = CreateMatrix(N_E, N_E);
+	MATRIX **over_dn_ = CreateMatrix(N_E, N_E);
 
-	if (m_data.type == POLY)
-	{
-		MATRIX res(m_data.m_poly[0].n_slices, (const arma::uword)m_data.m_poly.size());
-		for (UINT i = 0; i < m_data.m_poly[0].n_slices; i++){
-			for (int j = 0; j < m_data.m_poly.size(); j++){
-				res(i, j) = sum(sum(m_data.m_poly[j].slice(i) % m_mat));
+	UINT k(0), m(0), n(0), max_n(N_E);
+	for (m = 0; m < N_E; m++){
+
+		cheat ? max_n = (m == 0) ? N_E : 1 : false;
+		for (n = 0; n < max_n; n++){
+
+			//When dealing with singularities at self patch and neighbouring edges, increase number of quadrature points
+			if (n == (m + 1) % N_E || n == m || n == (m + N_E - 1) % N_E)
+			{
+				find_distances_between_2_edges(m,n,distances_[m][n], over_dnp_[m][n], over_dn_[m][n], si_sp, s0_sp);
 			}
-		}
-		return res;
-	}
+			else
+			{
+				//normal calculation when there are no singularities
+				find_distances_between_2_edges(m,n,distances_[m][n], over_dnp_[m][n], over_dn_[m][n], si, s0);
+			}
 
-	return false;
+		} // end n
+	} // end m
+
+	distances = distances_;
+	over_dnp = over_dnp_;
+	over_dn = over_dn_;
+
 }
 
-//computation of single elements of all operator matrices
-void Zmatrices::Z_calc(VECTOR& s_i, VECTOR& s_o, CustomData& G_dd, CustomData& G_SZ, CustomData& G_ZS, CustomData& G_SS, CustomData& G_ZZ,
-	MATRIX& coeffs_nh, MATRIX& coeffs_ns, MATRIX& coeffs_d, MATRIX& coeffs_s, MATRIX& coeffs_dp)
+void Zmatrices::find_distances_between_2_edges(UINT m, UINT n, MATRIX& P, MATRIX& dn_p, MATRIX& dn_,
+	VECTOR& s_i, VECTOR& s_o)
 {
+
+	//Find geometry around observation point
+	EDGE tmp_edge = z_geom_obj[m];
+	POINT2D a_m = tmp_edge.a;
+	POINT2D b_m = tmp_edge.b;
+	POINT2D n_m = tmp_edge.n;
+
+	//Find geometry around source point
+	tmp_edge = z_geom_obj[n];
+	POINT2D a_n = tmp_edge.a;
+	POINT2D b_n = tmp_edge.b;
+	POINT2D n_n = tmp_edge.n;
+
 	// Find inner and outer Gaussian quadrature points
-	int inner_quad_points = numel(s_i);
-	int outer_quad_points = numel(s_o);
+	int inner_quad_points(numel(s_i));
+	int outer_quad_points(numel(s_o));
 
 	// Make rho_m a vector of outer Gaussian quadrature points along observation edge
 	MATRIX rho_m = bsxPlus(a_m, b_m, s_o);
@@ -235,45 +222,62 @@ void Zmatrices::Z_calc(VECTOR& s_i, VECTOR& s_o, CustomData& G_dd, CustomData& G
 		rho_mn.slice(i) = tmp;
 	}
 	cube t_rho_mn = square(rho_mn);
-	MATRIX tmp = t_rho_mn.slice(0) + t_rho_mn.slice(1);
-	MATRIX P = sqrt(tmp);
+	MATRIX P_tmp( sqrt(t_rho_mn.slice(0) + t_rho_mn.slice(1)) );
+	P = P_tmp / z_c;
 
-	// Compute the temporal convolutions
-	VECTOR t_P = reshape(P, numel(P), 1) / z_c;
-	VECTOR t_Fh(t_P.size(), fill::zeros), t_F(t_P.size(), fill::zeros), t_dF(t_P.size(), fill::zeros);
+	// n dot P/|P| and n' dot P/|P|
+	cube unit_P(rho_mn);
+	for (UINT i = 0; i < unit_P.n_slices; i++)
+		unit_P.slice(i) /= P_tmp;
+	
+	dn_p = -(unit_P.slice(0) * n_n.x + unit_P.slice(1) * n_n.y);
+	dn_ = (unit_P.slice(0) * n_m.x + unit_P.slice(1) * n_m.y);
+}
 
-//#pragma omp parallel sections private(tempconvs,t_P)
+MATRIX Zmatrices::Perform_quadrature(MATRIX& G_coeffs, MATRIX& F)
+{
+	MATRIX res(max_test_deg+1, max_basis_deg+1, fill::zeros);
+	int basis_points(F.n_cols), test_points(F.n_rows);
+
+	for (UINT pm = 0; pm < max_test_deg+1; pm++)
 	{
-//#pragma omp section
-		tempconvs.compute2(t_P, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D,
-			t_Fh, t_F, t_dF);
+		int offset_m(pm*basis_points);
+
+		for (UINT pn = 0; pn < max_basis_deg+1; pn++)
+		{
+			int offset_n(pn*test_points);
+			res(pn, pm) = accu(G_coeffs(span(offset_n, offset_n + test_points - 1),
+										span(offset_m, offset_m + basis_points - 1)) % F);
+		}
 	}
 
-	MATRIX Fh = reshape(t_Fh, outer_quad_points, inner_quad_points);
-	MATRIX F = reshape(t_F, outer_quad_points, inner_quad_points);
-	MATRIX dF = reshape(t_dF, outer_quad_points, inner_quad_points) / z_c;
+	return res;
+}
 
-	// dF/dn = n dot P/|P| * dF
-	cube unit_P = rho_mn;
-	for (UINT i = 0; i < unit_P.n_slices; i++)
-		unit_P.slice(i) = rho_mn.slice(i) / P;
+//computation of single elements of all operator matrices
+void Zmatrices::Z_calc(const UINT& m, const UINT& n,
+	const POINT2D& t_m, const POINT2D& t_n, const double& lmn,
+	CLagrange_interp shiftedTB_D, CLagrange_interp shiftedTB_Nh, CLagrange_interp shiftedTB_Ns,
+	const UINT& inner_quad_points, const UINT& outer_quad_points,
+	MATRIX& G_dd, MATRIX& G_SZ, MATRIX& G_ZS, MATRIX& G_SS, MATRIX& G_ZZ,
+	MATRIX& coeffs_nh, MATRIX& coeffs_ns, MATRIX& coeffs_d, MATRIX& coeffs_s, MATRIX& coeffs_dp)
+{
+	// Compute the temporal convolutions with an array of distances
+	MATRIX P(distances[m][n]);
+	MATRIX Fh(P.n_rows, P.n_cols, fill::zeros), F(Fh), dF(Fh);
 
-	MATRIX dF_dnp = -(unit_P.slice(0) * n_n.x + unit_P.slice(1) * n_n.y) % dF;
-	MATRIX dF_dn = (unit_P.slice(0) * n_m.x + unit_P.slice(1) * n_m.y) % dF;
+	tempconvs.compute2(P, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D, Fh, F, dF);
+	dF /= z_c;
 
-	// Perform quadrature
-	MATRIX nh_intF = Perform_quadrature(G_dd, Fh);
-	MATRIX ns_intF = Perform_quadrature(G_SS, F);
-	MATRIX dp_intF = Perform_quadrature(G_SZ, dF_dn);
-	MATRIX d_intF = Perform_quadrature(G_ZS, dF_dnp);
-	MATRIX s_intF = Perform_quadrature(G_ZZ, F);
+	MATRIX dF_dnp( over_dnp[m][n] % dF );
+	MATRIX dF_dn( over_dn[m][n] % dF );
 
-	//scale using edge lengths
-	coeffs_nh = nh_intF * l_n * l_m;
-	coeffs_ns = ns_intF * l_n * l_m *(t_m.x*t_n.x + t_m.y*t_n.y);
-	coeffs_d = d_intF * l_n * l_m;
-	coeffs_s = s_intF* l_n * l_m;
-	coeffs_dp = dp_intF * l_n * l_m;
+	//Perform quadrature
+	coeffs_nh = Perform_quadrature(G_dd, Fh)	* lmn;
+	coeffs_ns = Perform_quadrature(G_SS, F)		* lmn *(t_m.x*t_n.x + t_m.y*t_n.y);
+	coeffs_d  = Perform_quadrature(G_ZS, dF_dnp)* lmn;
+	coeffs_s  = Perform_quadrature(G_ZZ, F)		* lmn;
+	coeffs_dp = Perform_quadrature(G_SZ, dF_dn) * lmn;
 }
 
 void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
@@ -289,6 +293,9 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 	lgquad1(z_outer_points_sp, s0_sp, w0_sp);
 	VECTOR si_sp, wi_sp;
 	lgquad1(z_inner_points_sp, si_sp, wi_sp);
+
+	//Make distances lookup table
+	make_distances_lookup_table();
 
 	//Find divergence of transverse basis and test functions
 	CBasisFunction	BasisFunction;
@@ -324,21 +331,19 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 	UINT num_basis_segments_d = (UINT)basis_function_d.size() / (UINT)z_geom_obj.size();
 	UINT num_test_segments_d = (UINT)basis_function_d.size() / (UINT)z_geom_obj.size();
 
-	//make ready to multiply with spatial basis function
-	CustomData Gcoeffs_ZZ, Gcoeffs_dd, Gcoeffs_ZZ_sp, Gcoeffs_dd_sp;		//	MATRIX ->0,0
-	CustomData Gcoeffs_ZS, Gcoeffs_SS, Gcoeffs_ZS_sp, Gcoeffs_SS_sp;		//  poly->(0,1), (1,1)
-	CustomData Gcoeffs_SZ, Gcoeffs_SZ_sp;									//	cube->1,0
-
-	Gcoeffs_create(s0, w0, si, wi, max_deg_test_Z, max_deg_basis_Z);	Gcoeffs_ZZ = m_data;
-	Gcoeffs_create(s0, w0, si, wi, max_deg_test_Z, max_deg_basis_S);	Gcoeffs_ZS = m_data;
-	Gcoeffs_create(s0, w0, si, wi, max_deg_test_S, max_deg_basis_Z);	Gcoeffs_SZ = m_data;
-	Gcoeffs_create(s0, w0, si, wi, max_deg_test_S, max_deg_basis_S);	Gcoeffs_SS = m_data;
-	Gcoeffs_create(s0, w0, si, wi, max_deg_test_d, max_deg_basis_d);	Gcoeffs_dd = m_data;
-	Gcoeffs_create(s0_sp, w0_sp, si_sp, wi_sp, max_deg_test_Z, max_deg_basis_Z);	Gcoeffs_ZZ_sp = m_data;
-	Gcoeffs_create(s0_sp, w0_sp, si_sp, wi_sp, max_deg_test_Z, max_deg_basis_S);	Gcoeffs_ZS_sp = m_data;
-	Gcoeffs_create(s0_sp, w0_sp, si_sp, wi_sp, max_deg_test_S, max_deg_basis_Z);	Gcoeffs_SZ_sp = m_data;
-	Gcoeffs_create(s0_sp, w0_sp, si_sp, wi_sp, max_deg_test_S, max_deg_basis_S);	Gcoeffs_SS_sp = m_data;
-	Gcoeffs_create(s0_sp, w0_sp, si_sp, wi_sp, max_deg_test_d, max_deg_basis_d);	Gcoeffs_dd_sp = m_data;
+	//Create Gaussian quadrature table to make ready to multiply with spatial basis functions
+	max_basis_deg = max(max_deg_basis_Z, max_deg_basis_S);
+	max_test_deg = max(max_deg_test_Z, max_deg_test_S);
+	MATRIX Gcoeffs_ZZ = Gcoeffs_create(s0, w0, si, wi, max_deg_test_Z, max_deg_basis_Z);
+	MATRIX Gcoeffs_ZS = Gcoeffs_create(s0, w0, si, wi, max_deg_test_Z, max_deg_basis_S);
+	MATRIX Gcoeffs_SZ = Gcoeffs_create(s0, w0, si, wi, max_deg_test_S, max_deg_basis_Z);
+	MATRIX Gcoeffs_SS = Gcoeffs_create(s0, w0, si, wi, max_deg_test_S, max_deg_basis_S);
+	MATRIX Gcoeffs_dd = Gcoeffs_create(s0, w0, si, wi, max_deg_test_d, max_deg_basis_d);
+	MATRIX Gcoeffs_ZZ_sp = Gcoeffs_create(s0_sp, w0_sp, si_sp, wi_sp, max_deg_test_Z, max_deg_basis_Z);
+	MATRIX Gcoeffs_ZS_sp = Gcoeffs_create(s0_sp, w0_sp, si_sp, wi_sp, max_deg_test_Z, max_deg_basis_S);
+	MATRIX Gcoeffs_SZ_sp = Gcoeffs_create(s0_sp, w0_sp, si_sp, wi_sp, max_deg_test_S, max_deg_basis_Z);
+	MATRIX Gcoeffs_SS_sp = Gcoeffs_create(s0_sp, w0_sp, si_sp, wi_sp, max_deg_test_S, max_deg_basis_S);
+	MATRIX Gcoeffs_dd_sp = Gcoeffs_create(s0_sp, w0_sp, si_sp, wi_sp, max_deg_test_d, max_deg_basis_d);
 
 	//Create index table to determine which edges interact
 	MATRIX idx_basis_Z = create_index_table(num_basis_segments_Z, N_E);
@@ -348,12 +353,12 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 	MATRIX idx_test_S = create_index_table(num_test_segments_S, N_E);
 	MATRIX idx_test_d = create_index_table(num_test_segments_d, N_E);
 
-	//Containers for operators (2D regions with 3rd dimension varying with time
-	S.resize(N_E, N_E, z_N_T);    S.fill(0);
-	D.resize(N_E, N_E, z_N_T);    D.fill(0);
-	Dp.resize(N_E, N_E, z_N_T);   Dp.fill(0);
-	Ns.resize(N_E, N_E, z_N_T);   Ns.fill(0);
-	Nh.resize(N_E, N_E, z_N_T);   Nh.fill(0);
+	//Containers for operators (2D regions with 3rd dimension varying with time)
+	S.zeros(N_E, N_E, z_N_T);
+	D.zeros(N_E, N_E, z_N_T);
+	Dp.zeros(N_E, N_E, z_N_T);
+	Ns.zeros(N_E, N_E, z_N_T);
+	Nh.zeros(N_E, N_E, z_N_T);
 
 	//Pad the interpolators so the sizes match Nh
 	CLagrange_interp tmp_Lag = timeBasis_Nh;
@@ -361,70 +366,67 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 	timeBasis_D = tmp_Lag.pad_coeffs(timeBasis_D);
 	tempconvs = CTempConvs();
 
-	//Loop over all segments so they all act as observation and source ( m and n) for all time steps
-	UINT k(0), m(0), n(0), max_n(N_E);
-	for (k = 0; k < z_N_T; k++){
+	//Containers for operator coefficients
+	MATRIX** coeffs_nh = CreateMatrix(N_E, N_E);
+	MATRIX** coeffs_ns = CreateMatrix(N_E, N_E);
+	MATRIX** coeffs_d = CreateMatrix(N_E, N_E);
+	MATRIX** coeffs_s = CreateMatrix(N_E, N_E);
+	MATRIX** coeffs_dp = CreateMatrix(N_E, N_E);
 
-		//Shifted time basis - shift and flip the time basis functions to get T(k*dt - t)
-		shiftedTB_D = timeBasis_D;
-		shiftedTB_D.translate((k)* z_dt, -1);
-		shiftedTB_Nh = timeBasis_Nh;
-		shiftedTB_Nh.translate((k)* z_dt, -1);
-		shiftedTB_Ns = timeBasis_Ns;
-		shiftedTB_Ns.translate((k)* z_dt, -1);
+	//Variables to be thread-private
+	int k(0), m(0), n(0), max_n(N_E);
+	POINT2D t_m, t_n;
+	double l_m, l_n;
+	CLagrange_interp shiftedTB_D, shiftedTB_Nh, shiftedTB_Ns;
 
-		//Containers for operator coefficients
-		MATRIX** coeffs_nh = CreateMatrix(N_E, N_E);
-		MATRIX** coeffs_ns = CreateMatrix(N_E, N_E);
-		MATRIX** coeffs_d = CreateMatrix(N_E, N_E);
-		MATRIX** coeffs_s = CreateMatrix(N_E, N_E);
-		MATRIX** coeffs_dp = CreateMatrix(N_E, N_E);
+#pragma omp parallel default(shared) private(k,m,n,shiftedTB_D, shiftedTB_Nh, shiftedTB_Ns,t_m,t_n,l_m,l_n)
+	{
+		//Loop over all segments so they all act as observation and source ( m and n) for all time steps
+		for (k = 0; k < (int)z_N_T; k++){
 
-//#pragma omp parallel for default(shared) private(m,n) schedule(dynamic)
-//#pragma omp parallel for private(n)
-		for (m = 0; m < N_E; m++){
+			//Shifted time basis - shift and flip the time basis functions to get T(k*dt - t)
+			shiftedTB_D = timeBasis_D;   shiftedTB_D.translate((k)* z_dt, -1);
+			shiftedTB_Nh = timeBasis_Nh; shiftedTB_Nh.translate((k)* z_dt, -1);
+			shiftedTB_Ns = timeBasis_Ns; shiftedTB_Ns.translate((k)* z_dt, -1);
 
-			//Find geometry around observation point
-			EDGE tmp_edge = z_geom_obj[m];
-			a_m = tmp_edge.a;
-			b_m = tmp_edge.b;
-			l_m = tmp_edge.l;
-			t_m = tmp_edge.t;
-			n_m = tmp_edge.n;
+#pragma omp for schedule(static)
+			for (m = 0; m < (int)N_E; m++){
 
-			cheat ? max_n = (m == 0) ? N_E : 1 : false;
-			//Zmatrices zcopy = *this;
-//#pragma omp parallel for default(shared) private(zcopy,tmp_edge)
-			for (n = 0; n < max_n; n++){
+				//Find tangential vector at observation point
+				t_m = z_geom_obj[m].t;
+				l_m = z_geom_obj[m].l;
 
-				//Find geometry around source point
-				tmp_edge = z_geom_obj[n];
-				a_n = tmp_edge.a;
-				b_n = tmp_edge.b;
-				l_n = tmp_edge.l;
-				t_n = tmp_edge.t;
-				n_n = tmp_edge.n;
+				cheat ? max_n = (m == 0) ? N_E : 1 : false;
+				for (n = 0; n < max_n; n++){
 
-				//When dealing with singularities at self patch and neighbouring edges, increase number of quadrature points
-				if (n == (m + 1) % N_E || n == m || n == (m + N_E - 1) % N_E){
+					//Find tangential vector at source point
+					t_n = z_geom_obj[n].t;
+					l_n = z_geom_obj[n].l;
 
-					//change si, s0, inner points, outer points, and Gcoeffs
-					Z_calc(si_sp, s0_sp, Gcoeffs_dd_sp, Gcoeffs_SZ_sp, Gcoeffs_ZS_sp, Gcoeffs_SS_sp, Gcoeffs_ZZ_sp,
-						coeffs_nh[m][n], coeffs_ns[m][n], coeffs_d[m][n], coeffs_s[m][n], coeffs_dp[m][n]);
-				}
-				else {
+					double lmn(l_n*l_m);
 
-					//normal calculation when there are no singularities
-					Z_calc(si, s0, Gcoeffs_dd, Gcoeffs_SZ, Gcoeffs_ZS, Gcoeffs_SS, Gcoeffs_ZZ,
-						coeffs_nh[m][n], coeffs_ns[m][n], coeffs_d[m][n], coeffs_s[m][n], coeffs_dp[m][n]);
-				}
+					//When dealing with singularities at self patch and neighbouring edges, increase number of quadrature points
+					if (n == (m + 1) % N_E || n == m || n == (m + N_E - 1) % N_E){
 
-			} // end n
-		} // end m
+						//change si, s0, inner points, outer points, and Gcoeffs
+						Z_calc(m, n, t_m, t_n, lmn, shiftedTB_D, shiftedTB_Nh, shiftedTB_Ns,
+							z_inner_points_sp, z_outer_points_sp,
+							Gcoeffs_dd_sp, Gcoeffs_SZ_sp, Gcoeffs_ZS_sp, Gcoeffs_SS_sp, Gcoeffs_ZZ_sp,
+							coeffs_nh[m][n], coeffs_ns[m][n], coeffs_d[m][n], coeffs_s[m][n], coeffs_dp[m][n]);
+					}
+					else {
 
-//#pragma omp flush
+						//normal calculation when there are no singularities
+						Z_calc(m, n, t_m, t_n, lmn, shiftedTB_D, shiftedTB_Nh, shiftedTB_Ns,
+							z_inner_points, z_outer_points,
+							Gcoeffs_dd, Gcoeffs_SZ, Gcoeffs_ZS, Gcoeffs_SS, Gcoeffs_ZZ,
+							coeffs_nh[m][n], coeffs_ns[m][n], coeffs_d[m][n], coeffs_s[m][n], coeffs_dp[m][n]);
+					}
 
-//#pragma omp single
+				} // end n
+			} // end m
+
+#pragma omp single
 		{
 			if (cheat)
 			{
@@ -436,46 +438,33 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 			}
 		}
 
-		//coeffs_s[0][0].print("0:"); coeffs_s[1][1].print("1:");
-
 		// use integrated convolution values along with basis/test function coefficients
 		// and index table to compute final matrix entries
-//#pragma omp parallel for
-		for (m = 0; m < N_E; m++){
+#pragma omp for schedule(static)
+		for (m = 0; m < (int)N_E; m++){
 
 			//current test edges
 			VECTOR index_test_Z = idx_test_Z.row(m).t();
-			VECTOR test_v = idx_test_S.row(0).t();
 			VECTOR index_test_S = idx_test_S.row(m).t();
 			VECTOR index_test_d = idx_test_d.row(m).t();
 
 			//current test function coefficients
-			MATRIX TCZ, TCS, TCd;
-			TCZ.set_size(num_test_segments_Z, test_coeffs_Z.n_cols);
-			TCZ = test_coeffs_Z.rows(m * num_test_segments_Z, (m + 1) * num_test_segments_Z - 1);
-
-			TCS.set_size(num_test_segments_S, test_coeffs_S.n_cols);
-			TCS = test_coeffs_S.rows(m * num_test_segments_S, (m + 1) * num_test_segments_S - 1);
-
-			TCd.set_size(num_test_segments_d, test_coeffs_d.n_cols);
-			TCd = test_coeffs_d.rows(m * num_test_segments_d, (m + 1) * num_test_segments_d - 1);
+			MATRIX TCZ = test_coeffs_Z.rows(m * num_test_segments_Z, (m + 1) * num_test_segments_Z - 1);
+			MATRIX TCS = test_coeffs_S.rows(m * num_test_segments_S, (m + 1) * num_test_segments_S - 1);
+			MATRIX TCd = test_coeffs_d.rows(m * num_test_segments_d, (m + 1) * num_test_segments_d - 1);
 
 			cheat ? max_n = (m == 0) ? N_E : 1 : false;
 			for (n = 0; n < max_n; n++){
+
 				//current basis edges
 				VECTOR index_basis_Z = idx_basis_Z.row(n).t();
 				VECTOR index_basis_S = idx_basis_S.row(n).t();
 				VECTOR index_basis_d = idx_basis_d.row(n).t();
+
 				//current basis function coefficients
-				MATRIX BCZ, BCS, BCd;
-				BCZ.set_size(num_basis_segments_Z, basis_coeffs_Z.n_cols);
-				BCZ = basis_coeffs_Z.rows(n * num_basis_segments_Z, (n + 1) * num_basis_segments_Z - 1);
-
-				BCS.set_size(num_basis_segments_S, basis_coeffs_S.n_cols);
-				BCS = basis_coeffs_S.rows(n * num_basis_segments_S, (n + 1) * num_basis_segments_S - 1);
-
-				BCd.set_size(num_basis_segments_d, basis_coeffs_d.n_cols);
-				BCd = basis_coeffs_d.rows(n * num_basis_segments_d, (n + 1) * num_basis_segments_d - 1);
+				MATRIX BCZ = basis_coeffs_Z.rows(n * num_basis_segments_Z, (n + 1) * num_basis_segments_Z - 1);
+				MATRIX BCS = basis_coeffs_S.rows(n * num_basis_segments_S, (n + 1) * num_basis_segments_S - 1);
+				MATRIX BCd = basis_coeffs_d.rows(n * num_basis_segments_d, (n + 1) * num_basis_segments_d - 1);
 
 				//combine contributions
 				Ns(m, n, k) = combine_contributions(coeffs_ns, index_test_S, index_basis_S, TCS, BCS);
@@ -488,9 +477,9 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 
 		} // end m
 
-//#pragma omp flush
+		//#pragma omp flush
 
-//#pragma omp single
+#pragma omp single
 		{
 			if (cheat)
 			{
@@ -500,23 +489,21 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 				SPD_cheat(D.slice(k));
 				SPD_cheat(Dp.slice(k));
 			}
-		}
-
-//#pragma omp single
-		{
-			//Free memory
-			deletepMat(coeffs_d, N_E);
-			deletepMat(coeffs_s, N_E);
-			deletepMat(coeffs_dp, N_E);
-			deletepMat(coeffs_ns, N_E);
-			deletepMat(coeffs_nh, N_E);
 
 			//Status
 			(k % status_int == 0) ? printf("%i ", k) : false;
 			fflush(stdout);
 		}
-		
-	} //end k
+
+		} //end k
+	}
+
+	//Free memory
+	deletepMat(coeffs_d, N_E);
+	deletepMat(coeffs_s, N_E);
+	deletepMat(coeffs_dp, N_E);
+	deletepMat(coeffs_ns, N_E);
+	deletepMat(coeffs_nh, N_E);
 
 }
 
@@ -587,16 +574,21 @@ double Zmatrices::combine_contributions(MATRIX** operator_coeffs, VECTOR& test_i
 {
 	//loop through all interacting edges and multiply the basis and test polynomial coefficients with 
 	//the integrated convolution ( operator ) coefficients
-	double z = 0;
+	double z(0);
+	MATRIX tmp;
 	for (UINT alpha = 0; alpha < numel(test_index); alpha++){
 		for (UINT beta = 0; beta < numel(basis_index); beta++){
 			MATRIX operator_coeff = operator_coeffs[(int)test_index(alpha) - 1][(int)basis_index(beta) - 1];
-			MATRIX polynomial_coeffs; polynomial_coeffs.set_size(test_coeffs.n_cols, basis_coeffs.n_cols);
-			if (polynomial_coeffs.n_cols * polynomial_coeffs.n_rows == 0){ return 0; }
-			for (UINT k = 0; k < test_coeffs.n_cols; k++){
-				polynomial_coeffs.row(k) = test_coeffs(alpha, k) * basis_coeffs.row(beta);
-			}
-			z = z + accu(polynomial_coeffs % operator_coeff);
+			//operator_coeff.print("op coeff:");
+			MATRIX polynomial_coeffs(test_coeffs.n_cols, basis_coeffs.n_cols);
+
+			polynomial_coeffs = test_coeffs.row(alpha).t() * basis_coeffs.row(beta);
+			polynomial_coeffs.resize(max_test_deg+1, max_basis_deg+1);
+			//polynomial_coeffs.print("polynomial_coeffs:");
+
+			tmp = polynomial_coeffs % operator_coeff;
+
+			z += accu(tmp);
 		}
 	}
 	return z;
