@@ -1,5 +1,6 @@
 #pragma once
 #include "Define.h"
+#include "BasisFunction.h"
 #include "Lagrange_interp.h"
 #include "TempConvs.h"
 
@@ -22,10 +23,10 @@ public:
 	CLagrange_interp timeBasis_D;
 	CLagrange_interp timeBasis_Nh;
 	CLagrange_interp timeBasis_Ns;
-	POLYMAT basis_function_Z;
-	POLYMAT basis_function_S;
-	POLYMAT test_function_Z;
-	POLYMAT test_function_S;
+	CBasisFunction basis_function_Z;
+	CBasisFunction basis_function_S;
+	CBasisFunction test_function_Z;
+	CBasisFunction test_function_S;
 	int	z_outer_points_sp;
 	int z_inner_points_sp;
 	int z_outer_points;
@@ -47,15 +48,15 @@ private:
 					VECTOR& s_i, VECTOR& s_o);
 	void	make_distances_lookup_table();
 	int		getMax(POLYMAT& obj);
-	double	combine_contributions(MATRIX** operator_coeffs, VECTOR& test_index, VECTOR& basis_index,
+	double	combine_contributions(MATRIX** operator_coeffs, uvec& test_index, uvec& basis_index,
 				MATRIX& test_coeffs, MATRIX& basis_coeffs);
-	MATRIX	vertcat(POLYMAT& obj);
+	MATRIX	vertcat(POLYMAT& obj, UINT num_segments);
 	MATRIX	bsxPower(VECTOR& bsxfun_A, VECTOR& bsxfun_B);
 	MATRIX	bsxPlus(POINT2D a, POINT2D b, VECTOR& s);
-	MATRIX	create_index_table(int num_segments, int N_E);
 	MATRIX	Perform_quadrature(MATRIX& G_coeffs, MATRIX& F);
 	MATRIX** CreateMatrix(int i, int j);
-	MATRIX	Gcoeffs_create(VECTOR& s0, VECTOR& w0, VECTOR&si, VECTOR& wi, int max_deg_test, int max_deg_basis);
+	MATRIX	Gcoeffs_create(VECTOR& s0, VECTOR& w0, VECTOR& si, VECTOR& wi, int max_deg_test, int max_deg_basis);
+	inline MATRIX create_function_coeffs_tbl(MATRIX& coeff_tbl, uvec& start_elements);
 
 	//properties:
 	bool cheat;

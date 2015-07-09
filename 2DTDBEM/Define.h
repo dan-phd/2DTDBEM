@@ -1,6 +1,9 @@
 // Definition of types
 
-#pragma once
+#pragma once		// this should work for most compilers
+
+#ifndef DEFINE_H
+#define DEFINE_H
 
 // Check if we're running on Windows
 #if defined(_WIN32) || defined(WIN32)
@@ -11,6 +14,7 @@
 #include <math.h>
 #include <armadillo>
 #include <vector>
+
 using namespace std;
 using namespace arma;
 
@@ -51,3 +55,6 @@ struct EDGE
 	POINT2D t;
 	POINT2D n;
 };
+
+
+#endif

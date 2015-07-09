@@ -1,20 +1,26 @@
 #pragma once
 #include "PiecewisePol.h"
 
-class CBasisFunction: public CPiecewisePol
+class CBasisFunction :
+	// inheritance
+	public CPiecewisePol
 {
 public:
 	CBasisFunction(void);
 	~CBasisFunction(void);
 
-	POLYMAT		createHat(GEOMETRY& geometry, bool scale);
-	POLYMAT		createSquare(GEOMETRY& geometry, bool scale);
-	void		divergence(POLYMAT& obj, GEOMETRY& geometry);
+	CBasisFunction	createHat(GEOMETRY& geometry, bool scale);
+	CBasisFunction	createSquare(GEOMETRY& geometry, bool scale);
+	CBasisFunction	createDualHat(GEOMETRY& dual_geometry, bool scale);
+	CBasisFunction	createDualSquare(GEOMETRY& dual_geometry, bool scale);
+	CBasisFunction	divergence(GEOMETRY& geometry);
 
-	double		distance(POINT2D& pt1, POINT2D& pt2)
-	{
-		double	ret = sqrt((pt1.x - pt2.x)*(pt1.x - pt2.x) + (pt1.y - pt2.y)*(pt1.y - pt2.y));
-		return	ret;
+	inline double distance(POINT2D& pt1, POINT2D& pt2) {
+		return sqrt((pt1.x - pt2.x)*(pt1.x - pt2.x) + (pt1.y - pt2.y)*(pt1.y - pt2.y));
 	}
+
+	//properties
+	umat idx_table;		//index table to define which polynomial segments to apply to each edge 
+	POLYMAT pol;		//polynomial basis function(s) for each edge
 };
 

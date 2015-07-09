@@ -289,10 +289,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BasisFunction.h" />
+    <ClInclude Include="Common_functions.h" />
     <ClInclude Include="Define.h" />
     <ClInclude Include="Lagrange_interp.h" />
+    <ClInclude Include="Matlab_IO.h" />
     <ClInclude Include="PiecewisePol.h" />
     <ClInclude Include="TempConvs.h" />
+    <ClInclude Include="Tests.h" />
     <ClInclude Include="Zmatrices.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
