@@ -9,9 +9,9 @@ public:
 	CBasisFunction(void);
 	~CBasisFunction(void);
 
-	CBasisFunction	createHat(GEOMETRY& geometry, bool scale);
+	CBasisFunction	createHat(GEOMETRY& geometry, bool scale, UINT num_shapes);
 	CBasisFunction	createSquare(GEOMETRY& geometry, bool scale);
-	CBasisFunction	createDualHat(GEOMETRY& dual_geometry, bool scale);
+	CBasisFunction	createDualHat(GEOMETRY& dual_geometry, bool scale, UINT num_shapes);
 	CBasisFunction	createDualSquare(GEOMETRY& dual_geometry, bool scale);
 	CBasisFunction	divergence(GEOMETRY& geometry);
 

@@ -54,6 +54,7 @@ struct EDGE
 	double	l;
 	POINT2D t;
 	POINT2D n;
+	double shape;
 };
 
 

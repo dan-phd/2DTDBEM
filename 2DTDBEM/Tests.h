@@ -86,8 +86,8 @@ bool Zmatrices_example()
 {
 	// Load the geometry
 	GEOMETRY geometry;
-	double dt, c;
-	if (!ReadGeometry(geometry, dt, c, "./input/cyl_res24_dual.mat"))
+	double dt, c, num_shapes;
+	if (!ReadGeometry(geometry, dt, c, num_shapes, "./input/cyl_res24_dual.mat"))
 	{
 		fprintf(stderr, "Error opening geometry. ");
 		return false;
@@ -96,10 +96,10 @@ bool Zmatrices_example()
 	//simulation params
 	UINT N_T = 10;
 	c = 3e8; dt = 0.1 / c;
-	UINT outer_points_sp = 50;
-	UINT inner_points_sp = 51;
-	UINT outer_points = 4;
-	UINT inner_points = 5;
+	UINT outer_points_sp = 500;
+	UINT inner_points_sp = 501;
+	UINT outer_points = 150;
+	UINT inner_points = 151;
 	UINT Lagrange_degree = 1;
 
 	// Create Z_matrices object
@@ -112,14 +112,14 @@ bool Zmatrices_example()
 	CBasisFunction BasisFunction;
 	/*
 	Z_matrices.basis_function_Z = BasisFunction.createSquare(geometry, true);
-	Z_matrices.basis_function_S = BasisFunction.createHat(geometry, true);
+	Z_matrices.basis_function_S = BasisFunction.createHat(geometry, true, num_shapes);
 	Z_matrices.test_function_Z = BasisFunction.createSquare(geometry, false);
-	Z_matrices.test_function_S = BasisFunction.createHat(geometry, false);*/
+	Z_matrices.test_function_S = BasisFunction.createHat(geometry, false, num_shapes);*/
 
 	Z_matrices.basis_function_Z = BasisFunction.createDualSquare(geometry, true);
-	Z_matrices.basis_function_S = BasisFunction.createDualHat(geometry, false);
+	Z_matrices.basis_function_S = BasisFunction.createDualHat(geometry, false, (UINT)num_shapes);
 	Z_matrices.test_function_Z = BasisFunction.createDualSquare(geometry, true);
-	Z_matrices.test_function_S = BasisFunction.createDualHat(geometry, false);
+	Z_matrices.test_function_S = BasisFunction.createDualHat(geometry, false, (UINT)num_shapes);
 
 	// Lagrange interpolators (temporal basis functions)
 	CLagrange_interp timeBasis = CLagrange_interp(dt, Lagrange_degree);
@@ -153,7 +153,7 @@ bool Zmatrices_example()
 	matvar_t *matvar = NULL;
 	const unsigned nfields = 5;
 	const char *fieldnames[nfields] = { "S", "D", "Dp", "Nh", "Ns" };
-	CreateStruct(&matfpZ, &matvar, "./results/cyl_res24.mat", "Z_Matrices", fieldnames, nfields);
+	CreateStruct(&matfpZ, &matvar, "./results/Zmatrices_example.mat", "Z_Matrices", fieldnames, nfields);
 	InsertCubeIntoStruct(&matvar, "S", S);
 	InsertCubeIntoStruct(&matvar, "D", D);
 	InsertCubeIntoStruct(&matvar, "Dp", Dp);
@@ -167,31 +167,3 @@ bool Zmatrices_example()
 	return true;
 }
 
-
-int start_tests(int argc, char* argv[])
-{
-
-	setup_omp();
-
-	// re-define the arguments for easier comparisons
-	vector<string> args(argv, argv + argc);
-
-	// args[0] is the program filename, argv[1] will be "test", so we start parsing at 2
-	for (size_t i = 2; i < args.size(); ++i)
-	{
-		if (args[i] == "Zmatrices")
-		{
-			if (!Zmatrices_example()){ return -1; }
-		}
-		else if (args[i] == "TempConvs")
-		{
-			if (!TempConvs_example()){ return -1; }
-		}
-		else {
-			printf("Not enough or invalid arguments, please try again.\n");
-			return -1;
-		}
-	}
-
-	return 0;
-}
