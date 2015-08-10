@@ -78,11 +78,7 @@ int main(int argc, char* argv[])
 		{
 			for (size_t i = 2; i < args.size(); ++i)
 			{
-				if (args[i] == "Zmatrices")
-				{
-					if (!Zmatrices_example()){ return -1; }
-				}
-				else if (args[i] == "TempConvs")
+				if (args[i] == "TempConvs")
 				{
 					if (!TempConvs_example()){ return -1; }
 				}
@@ -164,7 +160,6 @@ int main(int argc, char* argv[])
 
 	// Create Z_matrices object
 	Zmatrices Z_matrices = Zmatrices(N_T, dt, geometry, c);
-	Z_matrices.status_int = 1;		// define when status indicator updates
 	//Z_matrices.use_cheat(); omp_set_num_threads(1); printf("\nUsing cheat!\n");
 
 	// Basis and test functions applied to each segment

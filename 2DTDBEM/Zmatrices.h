@@ -17,7 +17,7 @@ public:
 	void	use_cheat();
 
 	//properties:
-	UINT z_N_T, status_int;
+	UINT z_N_T;
 	double z_dt;
 	double z_c;
 	CLagrange_interp timeBasis_D;

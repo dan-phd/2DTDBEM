@@ -27,7 +27,6 @@ Zmatrices::Zmatrices(UINT N_T, double dt, GEOMETRY& ZGegeometry, double c)
 	N_E = (UINT)ZGegeometry.size();
 
 	cheat = false;
-	status_int = 100;
 }
 
 void Zmatrices::use_cheat()
@@ -479,7 +478,7 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 			}
 
 			//Status
-			(k % status_int == 0) ? printf("%i ", k) : false;
+			printf("\r%i ", k);
 			fflush(stdout);
 		}
 
