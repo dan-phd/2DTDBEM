@@ -297,6 +297,7 @@
     <ClInclude Include="Define.h" />
     <ClInclude Include="Lagrange_interp.h" />
     <ClInclude Include="Matlab_IO.h" />
+    <ClInclude Include="optionparser.h" />
     <ClInclude Include="PiecewisePol.h" />
     <ClInclude Include="TempConvs.h" />
     <ClInclude Include="Tests.h" />
