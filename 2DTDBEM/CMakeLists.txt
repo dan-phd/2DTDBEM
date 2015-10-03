@@ -1,0 +1,61 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 2.9)
+PROJECT("2DTDBEM")
+
+SET( CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
+
+MESSAGE(STATUS "CMake version: ${CMAKE_VERSION}")
+
+# Create the executable
+set(CMAKE_BUILD_TYPE Release)
+add_executable(2DTDBEM BasisFunction.cpp Lagrange_interp.cpp PiecewisePol.cpp Start.cpp TempConvs.cpp Zmatrices.cpp)
+
+# Add my own header files
+INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}")
+
+# Find packages
+FIND_PACKAGE(Armadillo REQUIRED)
+IF(ARMADILLO_FOUND)
+    MESSAGE(STATUS "Found Armadillo.")
+    MESSAGE(STATUS "Armadillo include dir: ${ARMADILLO_INCLUDE_DIRS}")
+    MESSAGE(STATUS "Armadillo libs to be linked against: ${ARMADILLO_LIBRARIES}")
+	INCLUDE_DIRECTORIES(${ARMADILLO_INCLUDE_DIRS})
+	target_link_libraries(2DTDBEM ${ARMADILLO_LIBRARIES})
+ENDIF(ARMADILLO_FOUND)
+
+FIND_PACKAGE(ZLIB)
+if (ZLIB_FOUND)
+	MESSAGE(STATUS "Found ZLib.")
+    MESSAGE(STATUS "ZLib include dir: ${ZLIB_INCLUDE_DIRS}")
+    MESSAGE(STATUS "ZLib libs to be linked against: ${ZLIB_LIBRARIES}")
+    INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(2DTDBEM ${ZLIB_LIBRARIES})
+endif()
+
+FIND_PACKAGE(HDF5)
+if(HDF5_FOUND)
+	MESSAGE(STATUS "Found HDF5.")
+	MESSAGE(STATUS "HDF5 include dir: ${HDF5_INCLUDE_DIRS}")
+	MESSAGE(STATUS "HDF5 libs to be linked: ${HDF5_LIBRARIES}")
+	INCLUDE_DIRECTORIES(${HDF5_INCLUDE_DIRS})
+	target_link_libraries(2DTDBEM ${HDF5_LIBRARIES})
+endif()
+
+FIND_PACKAGE(MATIO REQUIRED)
+if(MATIO_FOUND)
+	MESSAGE(STATUS "Found MatIO.")
+	MESSAGE(STATUS "Matio include dir: ${MATIO_INCLUDE_DIRS}")
+	MESSAGE(STATUS "MatIO libs to be linked: ${MATIO_LIBRARIES}")
+	INCLUDE_DIRECTORIES(${MATIO_INCLUDE_DIRS})
+	target_link_libraries(2DTDBEM ${MATIO_LIBRARIES})
+endif()
+
+FIND_PACKAGE( OpenMP )
+if(OPENMP_FOUND)
+	message(STATUS "Found OpenMP.")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+endif()
+
+# Make executable
+install(TARGETS 2DTDBEM DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+# install(FILES example.h DESTINATION include)
