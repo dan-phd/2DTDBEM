@@ -71,13 +71,16 @@ bool TempConvs_example()
 	matvar_t *matvar = NULL;
 	const char *fieldnames[3] = { "Fh", "Fs", "dF" };
 	unsigned nfields = 3;
-	CreateStruct(&matfpT, &matvar, "./results/TempConvs_example.mat", "TempConvs2", fieldnames, nfields);
+
+	CreateMatFile(&matfpT, "./results/TempConvs_example.mat");
+	CreateStruct(&matvar, "TempConvs2", fieldnames, nfields);
 
 	InsertMatrixIntoStruct(&matvar, "Fh", Fh);
 	InsertMatrixIntoStruct(&matvar, "Fs", Fs);
 	InsertMatrixIntoStruct(&matvar, "dF", dF);
 
 	FinishStruct(&matfpT, &matvar);
+	FinishMatFile(&matfpT);
 
 	return true;
 }

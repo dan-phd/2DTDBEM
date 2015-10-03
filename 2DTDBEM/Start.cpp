@@ -8,8 +8,7 @@
 #include "Tests.h"
 #include "optionparser.h"
 
-
-void run_Zmatrices_calculation(Zmatrices Z_matrices, double dt, UINT Lagrange_degree,
+void run_Zmatrices_calculation(Zmatrices Z_matrices, double mu, double eps, double dt, UINT Lagrange_degree,
 	UINT outer_points_sp, UINT inner_points_sp, UINT outer_points, UINT inner_points, const char* result_file);
 
 // Argument types for option parser
@@ -50,34 +49,36 @@ struct Arg : public option::Arg
 };
 
 // List of accepted arguments to parse, along with usage
-enum  optionIndex { UNKNOWN, HELP, FILENAME, NUM_TIMESTEPS, QUAD_POINTS, TESTS, CHEAT };
+enum  optionIndex { UNKNOWN, HELP, FILENAME, NUM_TIMESTEPS, QUAD_POINTS, TESTS, CHEAT, SUFFIX };
 const option::Descriptor usage[] = {
 	{ UNKNOWN, 0, "", "", Arg::Unknown, "USAGE: 2DTDBEM [options]\n\n"
 	"Options:" },
 	{ HELP, 0, "h", "help", Arg::None, "  -h,  \t--help  \tPrint usage and exit." },
-	{ FILENAME, 0, "f", "file", Arg::Required, "  -f <arg>, \t--file=<arg>  \tInput mesh filename (required)." },
+	{ FILENAME, 0, "f", "file", Arg::Required, "  -f <arg>, \t--file=<arg>  \tInput mesh filename, without extension (required)." },
 	{ NUM_TIMESTEPS, 0, "t", "timesteps", Arg::Numeric, "  -t <num>, \t--timesteps=<num>  \tNumber of timesteps. [10000]" },
 	{ QUAD_POINTS, 0, "q", "quadrature_points", Arg::Numeric, "  -q <num>, \t--quadrature_points=<num>"
-		" \tNumber of Gaussian quadrature points to use for integrating. [25]" },
+	" \tNumber of Gaussian quadrature points to use for integrating. [25]" },
+	{ SUFFIX, 0, "s", "suffix", Arg::Optional, "  -s <arg>, \t--suffix=<arg>  \tTo attach to end of result filename." },
 	{ CHEAT, 0, "c", "cheat", Arg::None, "  -c,  \t--cheat  \tUse cheat for faster computation"
-		" (only applicable for symmetric cylinder since matrices are SPD)." },
+	" (only applicable for symmetric cylinder since matrices are SPD)." },
 	{ TESTS, 0, "T", "test", Arg::Required, "  -T <args>, \t--test <args>  \tPerform tests." },
 	{ UNKNOWN, 0, "", "", Arg::None,
 	"\nExamples:\n"
-	"  ./bin/2DTDBEM --file mesh.mat \n"
-	"  ./bin/2DTDBEM --file=mesh.mat --timesteps=5000 --quadrature_points=10 \n"
-	"  ./bin/2DTDBEM -fmesh.mat -t5000 -q10 \n"
+	"  ./bin/2DTDBEM --file mesh \n"
+	"  ./bin/2DTDBEM --file=mesh --timesteps=5000 --quadrature_points=10 \n"
+	"  ./bin/2DTDBEM -fmesh -t5000 -q10 \n"
 	"  ./bin/2DTDBEM --test TempConvs \n"
-	"\nThe input file is a specific Matlab type file which contains boundary edges, dt, c, and number of shapes.\n"
+	"\nThe input file is a specific Matlab type file which contains boundary edges, dt, mu, eps, and number of shapes."
+	"\nThe results folder contains the output files, which have the same name as the input, plus an optional suffix.\n"
 	},
 	{ 0, 0, 0, 0, 0, 0 } };
 
 int main(int argc, char* argv[])
 {
-	char filename[100];
+	char filename[100], suffix[20];
 	UINT N_T = 10000;
 	UINT outer_points = 25;
-	bool cheat = false;
+	bool cheat = false, add_suffix = false;
 
 	// Parse arguments
 	argc -= (argc > 0); argv += (argc > 0); // skip program name argv[0] if present
@@ -118,6 +119,11 @@ int main(int argc, char* argv[])
 			temp_str = opt.arg;
 			strcpy(filename, temp_str.c_str());
 			break;
+		case SUFFIX:
+			temp_str = opt.arg;
+			strcpy(suffix, temp_str.c_str());
+			add_suffix = true;
+			break;
 		case UNKNOWN:
 			// not possible because Arg::Unknown returns ARG_ILLEGAL
 			// which aborts the parse with an error
@@ -141,41 +147,45 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	
-	// Find out how many computing nodes we can use, then use them all
-	setup_omp();
-
 	// Load the geometry
-	printf("Opening geometry file: %s\n", filename);
-	GEOMETRY geometry; double dt, c, num_shapes_;
-	string str1 = "./input/"; str1 = str1 + filename;
-	if (!ReadGeometry(geometry, dt, c, num_shapes_, str1.c_str()) )
+	printf("Opening geometry file: %s.mat", filename);
+	GEOMETRY geometry; double dt, mu, eps, num_shapes_;
+	string str1 = "./input/"; str1 = str1 + filename + ".mat";
+	if (!ReadGeometry(geometry, dt, mu, eps, num_shapes_, str1.c_str()))
 	{
-		fprintf(stderr, "\nError opening geometry. \n"); return false;
+		fprintf(stderr, "\n\nError opening geometry. \n"); return false;
 	}
 	UINT num_shapes = (UINT)num_shapes_;
-	printf("Success! Number of distinct shapes = %i\n", num_shapes);
+	printf("\t- done. \nNumber of distinct shapes = %i\n", num_shapes);
 
 	// Output filename
 	string str2 = "./results/";
-	string str3 = str2+filename;
-	char result_file[100];
+	string str3 = str2 + filename;
+	if (add_suffix)
+		str3 = str3 + suffix + ".mat";
+	else
+		str3 += ".mat";
+	char result_file[124];
 	strcpy(result_file, str3.c_str());
 
 	// Simulation parameters
+	double c = 1 / sqrt(mu*eps);
 	UINT inner_points = outer_points + 1;
 	UINT outer_points_sp = 5 * outer_points;
 	UINT inner_points_sp = 5 * outer_points + 1;
 	UINT Lagrange_degree = 1;
 	printf("\nSimulation parameters:"
+		"\n\tmu = %e"
+		"\n\teps= %e"
+		"\n\tc = %e"
 		"\n\tdt = %e"
 		"\n\tN_T = %i"
 		"\n\touter_points = %i"
 		"\n\tinner_points = %i"
 		"\n\touter_points_sp = %i"
 		"\n\tinner_points_sp = %i"
-		"\n\tLagrange_degree = %i\n\n", 
-		dt, N_T, outer_points, inner_points, outer_points_sp, inner_points_sp, Lagrange_degree);
+		"\n\tLagrange_degree = %i\n\n",
+		mu, eps, c, dt, N_T, outer_points, inner_points, outer_points_sp, inner_points_sp, Lagrange_degree);
 
 	// Create Z_matrices object
 	Zmatrices Z_matrices = Zmatrices(N_T, dt, geometry, c);
@@ -193,16 +203,18 @@ int main(int argc, char* argv[])
 	Z_matrices.test_function_Z = BasisFunction.createDualSquare(geometry, true);
 	Z_matrices.test_function_S = BasisFunction.createDualHat(geometry, true, num_shapes);
 
+	// Find out how many computing nodes we can use, then use them all
+	setup_omp();
 
-	run_Zmatrices_calculation(Z_matrices, dt, Lagrange_degree,
+	run_Zmatrices_calculation(Z_matrices, mu, eps, dt, Lagrange_degree,
 		outer_points_sp, inner_points_sp, outer_points, inner_points, result_file);
 
-	
+
 	return 0;
 }
 
 
-void run_Zmatrices_calculation(Zmatrices Z_matrices, double dt, UINT Lagrange_degree,
+void run_Zmatrices_calculation(Zmatrices Z_matrices, double mu, double eps, double dt, UINT Lagrange_degree,
 	UINT outer_points_sp, UINT inner_points_sp, UINT outer_points, UINT inner_points, const char* result_file)
 {
 	// Lagrange interpolators (temporal basis functions)
@@ -232,22 +244,46 @@ void run_Zmatrices_calculation(Zmatrices Z_matrices, double dt, UINT Lagrange_de
 	Z_matrices.compute(S, D, Dp, Nh, Ns);
 	finish_timing(t);
 
+	// Combine singular and hypersingular contributions of N operator
+	// N = Nh*(c/eta) + Ns/(eta*c)
+	cube N(Nh/mu + Ns*eps);
+
 	// Output MAT file as a struct that stores the operators
 	printf("Compressing matrices into Matlab form...\n");
 	mat_t *matfpZ = NULL;
 	matvar_t *matvar = NULL;
-	const unsigned nfields = 5;
-	const char *fieldnames[nfields] = { "S", "D", "Dp", "Nh", "Ns" };
-	CreateStruct(&matfpZ, &matvar, result_file, "Z_Matrices", fieldnames, nfields);
+
+	/*// Save matrices as a Matlab struct
+	const unsigned nfields = 4;
+	const char *fieldnames[nfields] = { "S", "D", "Dp", "N" };
+	CreateMatFile(&matfpZ, result_file);
+	CreateStruct(&matvar, "Z_Matrices", fieldnames, nfields);
 	InsertCubeIntoStruct(&matvar, "S", S);
 	InsertCubeIntoStruct(&matvar, "D", D);
 	InsertCubeIntoStruct(&matvar, "Dp", Dp);
-	InsertCubeIntoStruct(&matvar, "Nh", Nh);
-	InsertCubeIntoStruct(&matvar, "Ns", Ns);
+	InsertCubeIntoStruct(&matvar, "N", N);
 	FinishStruct(&matfpZ, &matvar);
+	FinishMatFile(&matfpZ); */
 
-	// free memory
-	S.clear(), D.clear(), Dp.clear(), Ns.clear(), Nh.clear();
+	// Save matrices as separate matlab variables
+	double NT = S.n_slices;
+	if (CreateMatFile(&matfpZ, result_file) == -1)
+	{
+		return;
+	}
+	else
+	{
+		InsertVar(&matfpZ, "N_T", &NT);
+		InsertCube(&matfpZ, "S", S);
+		InsertCube(&matfpZ, "D", D);
+		InsertCube(&matfpZ, "Dp", Dp);
+		InsertCube(&matfpZ, "N", N);
+		FinishMatFile(&matfpZ);
 
-	printf("\nDone. Output file location: %s\n\n", result_file);
+		// free memory
+		S.clear(), D.clear(), Dp.clear(), Ns.clear(), Nh.clear();
+
+		printf("\t done. \nOutput file location: %s\n\n", result_file);
+	}
+
 }
