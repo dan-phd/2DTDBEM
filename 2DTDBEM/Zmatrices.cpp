@@ -143,9 +143,7 @@ void Zmatrices::make_distances_lookup_table()
 
 	UINT k(0), m(0), n(0), max_n(N_E);
 	for (m = 0; m < N_E; m++){
-
-		cheat ? max_n = (m == 0) ? N_E : 1 : false;
-		for (n = 0; n < max_n; n++){
+		for (n = 0; n < N_E; n++){
 
 			//When dealing with singularities at self patch and neighbouring edges, increase number of quadrature points
 			if (n == (m + 1) % N_E || n == m || n == (m + N_E - 1) % N_E)
@@ -250,7 +248,7 @@ void Zmatrices::Z_calc(const UINT& m, const UINT& n,
 	MATRIX P(distances[m][n]);
 	MATRIX Fh(P.n_rows, P.n_cols, fill::zeros), F(Fh), dF(Fh);
 
-	tempconvs.compute2(P, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D, Fh, F, dF);
+	tempconvs.compute(P, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D, Fh, F, dF);
 	dF /= z_c;
 
 	MATRIX dF_dnp( over_dnp[m][n] % dF );
@@ -351,6 +349,7 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 	MATRIX** coeffs_dp = CreateMatrix(N_E, N_E);
 
 	//Variables to be thread-private
+	int number_to_skip(N_E / N_F);
 	int k(0), m(0), n(0), max_n(N_E), max_n2(N_F);
 	POINT2D t_m, t_n;
 	double l_m, l_n;
@@ -373,7 +372,7 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 				t_m = z_geom_obj[m].t;
 				l_m = z_geom_obj[m].l;
 
-				cheat ? max_n = (m == 0) ? N_E : 1 : false;
+				cheat ? max_n = (m>number_to_skip-1) ? number_to_skip : (int)N_E : false;
 				for (n = 0; n < max_n; n++){
 
 					//Find tangential vector at source point
@@ -407,11 +406,11 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 		{
 			if (cheat)
 			{
-				SPD_cheat_coeffs(coeffs_s, N_E, N_E);
-				SPD_cheat_coeffs(coeffs_nh, N_E, N_E);
-				SPD_cheat_coeffs(coeffs_ns, N_E, N_E);
-				SPD_cheat_coeffs(coeffs_d, N_E, N_E);
-				SPD_cheat_coeffs(coeffs_dp, N_E, N_E);
+				SPD_cheat_coeffs(coeffs_s, N_E, N_E, number_to_skip);
+				SPD_cheat_coeffs(coeffs_nh, N_E, N_E, number_to_skip);
+				SPD_cheat_coeffs(coeffs_ns, N_E, N_E, number_to_skip);
+				SPD_cheat_coeffs(coeffs_d, N_E, N_E, number_to_skip);
+				SPD_cheat_coeffs(coeffs_dp, N_E, N_E, number_to_skip);
 			}
 		}
 
@@ -605,14 +604,14 @@ double Zmatrices::combine_contributions(MATRIX** operator_coeffs, uvec& test_ind
 	return z;
 }
 
-//CHEATS ONLY APPLICABLE FOR PEC CYLINDER (since Z matrix is SPD)
+//CHEATS ONLY APPLICABLE FOR CYLINDER (since Z matrix is SPD)
 //Cheat to act on operator coeffs
-void Zmatrices::SPD_cheat_coeffs(MATRIX** Z, UINT m, UINT n)
+void Zmatrices::SPD_cheat_coeffs(MATRIX** Z, UINT m, UINT n, UINT num_to_skip)
 {
 	//Using just the 1st row and column, copy elements diagonally down and right
-	for (UINT i = 1; i < m; i++)
-		for (UINT j = 1; j < n; j++)
-			(Z[i][j]) = (Z[i - 1][j - 1]);
+	for (UINT i = num_to_skip; i < m; i++)
+		for (UINT j = num_to_skip; j < n; j++)
+			(Z[i][j]) = (Z[i - num_to_skip][j - num_to_skip]);
 }
 //Cheat to act on operators
 void Zmatrices::SPD_cheat(MATRIX& Z)

@@ -40,7 +40,7 @@ private:
 					const UINT& inner_quad_points, const UINT& outer_quad_points,
 					MATRIX& G_dd, MATRIX& G_SZ, MATRIX& G_ZS, MATRIX& G_SS, MATRIX& G_ZZ,
 					MATRIX& coeffs_nh, MATRIX& coeffs_ns, MATRIX& coeffs_d, MATRIX& coeffs_s, MATRIX& coeffs_dp);
-	void	SPD_cheat_coeffs(MATRIX** Z, UINT m, UINT n);
+	void	SPD_cheat_coeffs(MATRIX** Z, UINT m, UINT n, UINT num_to_skip);
 	void	SPD_cheat(MATRIX& Z);
 	void	lgquad1(UINT N, VECTOR& s, VECTOR& w);
 	void	deletepMat(MATRIX** pMat, int count);

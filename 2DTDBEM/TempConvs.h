@@ -8,15 +8,7 @@ public:
 	CTempConvs(void);
 	~CTempConvs(void);
 
-	void	compute(VECTOR& distances,
-				CLagrange_interp& intTB,
-				CLagrange_interp& TB,
-				CLagrange_interp& dTB,
-				VECTOR& Fh,
-				VECTOR& Fs,
-				VECTOR& dF);
-
-	void	compute2(MATRIX& distances,
+	void	compute(MATRIX& distances,
 				CLagrange_interp& intTB,
 				CLagrange_interp& TB,
 				CLagrange_interp& dTB,

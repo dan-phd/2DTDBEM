@@ -8,7 +8,7 @@
 #include "Tests.h"
 #include "optionparser.h"
 
-void run_Zmatrices_calculation(Zmatrices Z_matrices, double mu, double eps, double dt, UINT Lagrange_degree,
+void run_Zmatrices_calculation(Zmatrices Z_matrices, double c, double dt, UINT Lagrange_degree,
 	UINT outer_points_sp, UINT inner_points_sp, UINT outer_points, UINT inner_points, const char* result_file);
 
 // Argument types for option parser
@@ -67,7 +67,7 @@ const option::Descriptor usage[] = {
 	"  ./bin/2DTDBEM --file mesh \n"
 	"  ./bin/2DTDBEM --file=mesh --timesteps=5000 --quadrature_points=10 \n"
 	"  ./bin/2DTDBEM -fmesh -t5000 -q10 \n"
-	"  ./bin/2DTDBEM --test TempConvs \n"
+	"  ./bin/2DTDBEM --test computeConvolutions \n"
 	"\nThe input file is a specific Matlab type file which contains boundary edges, dt, mu, eps, and number of shapes."
 	"\nThe results folder contains the output files, which have the same name as the input, plus an optional suffix.\n"
 	},
@@ -135,9 +135,9 @@ int main(int argc, char* argv[])
 	{
 		string this_arg = o->arg;
 
-		if (this_arg == "TempConvs")
+		if (this_arg == "computeConvolutions")
 		{
-			if (!TempConvs_example()){ return -1; }
+			if (!computeConvolutions_example()){ return -1; }
 		}
 		else {
 			printf("Not enough or invalid arguments, please try again.\n");
@@ -149,14 +149,16 @@ int main(int argc, char* argv[])
 
 	// Load the geometry
 	printf("Opening geometry file: %s.mat", filename);
-	GEOMETRY geometry; double dt, mu, eps, num_shapes_;
+	GEOMETRY geometry; double dt, c, num_shapes_, dual_;
 	string str1 = "./input/"; str1 = str1 + filename + ".mat";
-	if (!ReadGeometry(geometry, dt, mu, eps, num_shapes_, str1.c_str()))
+	if (!ReadGeometry(geometry, dt, c, num_shapes_, dual_, str1.c_str()))
 	{
 		fprintf(stderr, "\n\nError opening geometry. \n"); return false;
 	}
 	UINT num_shapes = (UINT)num_shapes_;
+	UINT dual = (UINT)dual_;
 	printf("\t- done. \nNumber of distinct shapes = %i\n", num_shapes);
+	printf("Using dual basis functions = %s\n", dual?"true":"false");
 
 	// Output filename
 	string str2 = "./results/";
@@ -169,14 +171,11 @@ int main(int argc, char* argv[])
 	strcpy(result_file, str3.c_str());
 
 	// Simulation parameters
-	double c = 1 / sqrt(mu*eps);
 	UINT inner_points = outer_points + 1;
 	UINT outer_points_sp = 5 * outer_points;
 	UINT inner_points_sp = 5 * outer_points + 1;
 	UINT Lagrange_degree = 1;
 	printf("\nSimulation parameters:"
-		"\n\tmu = %e"
-		"\n\teps= %e"
 		"\n\tc = %e"
 		"\n\tdt = %e"
 		"\n\tN_T = %i"
@@ -185,7 +184,7 @@ int main(int argc, char* argv[])
 		"\n\touter_points_sp = %i"
 		"\n\tinner_points_sp = %i"
 		"\n\tLagrange_degree = %i\n\n",
-		mu, eps, c, dt, N_T, outer_points, inner_points, outer_points_sp, inner_points_sp, Lagrange_degree);
+		c, dt, N_T, outer_points, inner_points, outer_points_sp, inner_points_sp, Lagrange_degree);
 
 	// Create Z_matrices object
 	Zmatrices Z_matrices = Zmatrices(N_T, dt, geometry, c);
@@ -198,15 +197,26 @@ int main(int argc, char* argv[])
 	// S = transverse plane, Z = z-directed, d = S divergence
 	// 2nd argument (true/false) defines whether to scale by edge length
 	CBasisFunction BasisFunction;
-	Z_matrices.basis_function_Z = BasisFunction.createDualSquare(geometry, false);
-	Z_matrices.basis_function_S = BasisFunction.createDualHat(geometry, false, num_shapes);
-	Z_matrices.test_function_Z = BasisFunction.createDualSquare(geometry, true);
-	Z_matrices.test_function_S = BasisFunction.createDualHat(geometry, true, num_shapes);
+	if (dual_ == 1)
+	{
+		Z_matrices.basis_function_Z = BasisFunction.createDualSquare(geometry, false);
+		Z_matrices.basis_function_S = BasisFunction.createDualHat(geometry, false, num_shapes);
+		Z_matrices.test_function_Z = BasisFunction.createDualSquare(geometry, true);
+		Z_matrices.test_function_S = BasisFunction.createDualHat(geometry, true, num_shapes);
+	}
+	else
+	{
+		Z_matrices.basis_function_Z = BasisFunction.createSquare(geometry, false);
+		Z_matrices.basis_function_S = BasisFunction.createHat(geometry, false, num_shapes);
+		Z_matrices.test_function_Z = BasisFunction.createSquare(geometry, true);
+		Z_matrices.test_function_S = BasisFunction.createHat(geometry, true, num_shapes);
+	}
 
-	// Find out how many computing nodes we can use, then use them all
+
+	// Find out how many computing nodes we can use, then use them all (if not using cheat)
 	setup_omp();
 
-	run_Zmatrices_calculation(Z_matrices, mu, eps, dt, Lagrange_degree,
+	run_Zmatrices_calculation(Z_matrices, c, dt, Lagrange_degree,
 		outer_points_sp, inner_points_sp, outer_points, inner_points, result_file);
 
 
@@ -214,7 +224,7 @@ int main(int argc, char* argv[])
 }
 
 
-void run_Zmatrices_calculation(Zmatrices Z_matrices, double mu, double eps, double dt, UINT Lagrange_degree,
+void run_Zmatrices_calculation(Zmatrices Z_matrices, double c, double dt, UINT Lagrange_degree,
 	UINT outer_points_sp, UINT inner_points_sp, UINT outer_points, UINT inner_points, const char* result_file)
 {
 	// Lagrange interpolators (temporal basis functions)
@@ -233,6 +243,7 @@ void run_Zmatrices_calculation(Zmatrices Z_matrices, double mu, double eps, doub
 	Z_matrices.z_inner_points = inner_points;
 
 	// do main computation and time
+	uvec test = linspace<uvec>(0, 1, 2) > 2;
 	cube S, D, Dp, Nh, Ns;
 	printf("\n%s\n\n", "Computing operators...");
 #ifdef OS_WIN
@@ -245,8 +256,7 @@ void run_Zmatrices_calculation(Zmatrices Z_matrices, double mu, double eps, doub
 	finish_timing(t);
 
 	// Combine singular and hypersingular contributions of N operator
-	// N = Nh*(c/eta) + Ns/(eta*c)
-	cube N(Nh/mu + Ns*eps);
+	cube N( Nh + Ns/(c*c) );
 
 	// Output MAT file as a struct that stores the operators
 	printf("Compressing matrices into Matlab form...\n");

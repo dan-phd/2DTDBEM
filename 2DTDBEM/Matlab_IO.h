@@ -7,7 +7,7 @@
 
 int CreateMatFile(mat_t **file_ptr, const char *filename)
 {
-	mat_t *file_p = Mat_CreateVer(filename, NULL, MAT_FT_MAT73);
+	mat_t *file_p = Mat_CreateVer(filename, NULL, MAT_FT_DEFAULT);
 	*file_ptr = file_p;
 	if (NULL == *file_ptr) {
 		fprintf(stderr, "Error opening MAT file %s\n", filename);
@@ -110,7 +110,7 @@ void FinishStruct(mat_t **file_ptr, matvar_t **struct_in)
 	Mat_VarFree(*struct_in);
 }
 
-bool ReadGeometry(GEOMETRY& geometry, double& dt, double& mu, double& eps, double& num_shapes, const char* fname)
+bool ReadGeometry(GEOMETRY& geometry, double& dt, double& c, double& num_shapes, double& dual, const char* fname)
 {
 	mat_t *matfp = NULL;
 	matvar_t *matvar = NULL, *tmp = NULL;
@@ -118,7 +118,7 @@ bool ReadGeometry(GEOMETRY& geometry, double& dt, double& mu, double& eps, doubl
 
 	if (NULL == matfp)
 	{
-		fprintf(stderr, "Error opening %s file %s\n", fname);
+		fprintf(stderr, "Error opening file %s\n", fname);
 		return false;
 	}
 
@@ -126,20 +126,20 @@ bool ReadGeometry(GEOMETRY& geometry, double& dt, double& mu, double& eps, doubl
 	matvar = Mat_VarRead(matfp, "dt");
 	memcpy(&dt, matvar->data, matvar->data_size);
 
-	// Get mu
-	matvar = Mat_VarRead(matfp, "mu");
-	memcpy(&mu, matvar->data, matvar->data_size);
-
-	// Get eps
-	matvar = Mat_VarRead(matfp, "eps");
-	memcpy(&eps, matvar->data, matvar->data_size);
+	// Get c
+	matvar = Mat_VarRead(matfp, "c");
+	memcpy(&c, matvar->data, matvar->data_size);
 
 	// Get number of shapes in this file
 	matvar = Mat_VarRead(matfp, "num_shapes");
 	memcpy(&num_shapes, matvar->data, matvar->data_size);
 
+	// Get the "dual" flag
+	matvar = Mat_VarRead(matfp, "dual");
+	memcpy(&dual, matvar->data, matvar->data_size);
+
 	// Get geometry
-	matvar = Mat_VarRead(matfp, "geometry");
+	matvar = Mat_VarRead(matfp, "boundary");
 	if (matvar == NULL)	return false;
 	const int num_edges = (int)matvar->dims[0];
 	matvar_t* tmpp;

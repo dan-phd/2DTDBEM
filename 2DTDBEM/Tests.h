@@ -7,9 +7,9 @@
 #include "Common_functions.h"
 
 
-bool TempConvs_example()
+bool computeConvolutions_example()
 {
-	printf("\nComputing TempConvs example...");
+	printf("\nRunning computeConvolutions example...");
 	double	c = 1;								// speed of light
 	double	dt = 0.1 / c;						// timestep
 	VECTOR P = linspace<vec>(1e-6, 1, (arma::uword)1e+6);    // distances
@@ -56,7 +56,7 @@ bool TempConvs_example()
 		// Compute the temporal convolutions
 		VECTOR vFh(P.size(), fill::zeros), vFs(P.size(), fill::zeros), vdF(P.size(), fill::zeros);
 		P /= c;
-		tempconvs.compute2(P1, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D, vFh, vFs, vdF);
+		tempconvs.compute(P1, shiftedTB_Nh, shiftedTB_Ns, shiftedTB_D, vFh, vFs, vdF);
 
 		Fh.col(K) = vFh;
 		Fs.col(K) = vFs;
@@ -72,8 +72,8 @@ bool TempConvs_example()
 	const char *fieldnames[3] = { "Fh", "Fs", "dF" };
 	unsigned nfields = 3;
 
-	CreateMatFile(&matfpT, "./results/TempConvs_example.mat");
-	CreateStruct(&matvar, "TempConvs2", fieldnames, nfields);
+	CreateMatFile(&matfpT, "./results/computeConvolutions.mat");
+	CreateStruct(&matvar, "TempConvs", fieldnames, nfields);
 
 	InsertMatrixIntoStruct(&matvar, "Fh", Fh);
 	InsertMatrixIntoStruct(&matvar, "Fs", Fs);
