@@ -9,7 +9,12 @@
 
 bool computeConvolutions_example()
 {
-	printf("\nRunning computeConvolutions example...");
+	printf("\nRunning computeConvolutions example...\n\n"
+		"This example computes the convolution between the 2D "
+		"Greens function and the spatially differentiated, temporally "
+		"differentiated and temporally integrated Lagrange interpolator "
+		"functions - 5 million times each...");
+
 	double	c = 1;								// speed of light
 	double	dt = 0.1 / c;						// timestep
 	VECTOR P = linspace<vec>(1e-6, 1, (arma::uword)1e+6);    // distances
@@ -81,6 +86,12 @@ bool computeConvolutions_example()
 
 	FinishStruct(&matfpT, &matvar);
 	FinishMatFile(&matfpT);
+
+	printf("\nThe Matlab file has been output successfully.\n\n"
+		"Now open Matlab and run the BEUT.BEM.Demo.computeConvolutions "
+		"script - remember to modify the BEUT.CFile function so Matlab knows "
+		"where to find the file. Then compare the time and accuracy for the "
+		"results using Matlab and results using C++.\n\n");
 
 	return true;
 }

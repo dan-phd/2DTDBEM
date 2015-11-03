@@ -49,26 +49,28 @@ struct Arg : public option::Arg
 };
 
 // List of accepted arguments to parse, along with usage
-enum  optionIndex { UNKNOWN, HELP, FILENAME, NUM_TIMESTEPS, QUAD_POINTS, TESTS, CHEAT, SUFFIX };
+enum  optionIndex { UNKNOWN, HELP, FILENAME, NUM_TIMESTEPS, QUAD_POINTS, TESTS, DEGREE, CHEAT, SUFFIX };
 const option::Descriptor usage[] = {
-	{ UNKNOWN, 0, "", "", Arg::Unknown, "USAGE: 2DTDBEM [options]\n\n"
+	{ UNKNOWN, 0, "", "", Arg::Unknown, "USAGE: ./bin/2DTDBEM [options]\n\n"
 	"Options:" },
 	{ HELP, 0, "h", "help", Arg::None, "  -h,  \t--help  \tPrint usage and exit." },
 	{ FILENAME, 0, "f", "file", Arg::Required, "  -f <arg>, \t--file=<arg>  \tInput mesh filename, without extension (required)." },
-	{ NUM_TIMESTEPS, 0, "t", "timesteps", Arg::Numeric, "  -t <num>, \t--timesteps=<num>  \tNumber of timesteps. [10000]" },
+	{ NUM_TIMESTEPS, 0, "t", "timesteps", Arg::Numeric, "  -t <num>, \t--timesteps=<num>  \tNumber of timesteps. [1000]" },
 	{ QUAD_POINTS, 0, "q", "quadrature_points", Arg::Numeric, "  -q <num>, \t--quadrature_points=<num>"
 	" \tNumber of Gaussian quadrature points to use for integrating. [25]" },
+	{ DEGREE, 0, "d", "degree", Arg::Numeric, " -d <num>, \t--degree=<num>"
+	" \tLagrange interpolator degree to use for the temporal convolutions. [1]" },
 	{ SUFFIX, 0, "s", "suffix", Arg::Optional, "  -s <arg>, \t--suffix=<arg>  \tTo attach to end of result filename." },
 	{ CHEAT, 0, "c", "cheat", Arg::None, "  -c,  \t--cheat  \tUse cheat for faster computation"
 	" (only applicable for symmetric cylinder since matrices are SPD)." },
 	{ TESTS, 0, "T", "test", Arg::Required, "  -T <args>, \t--test <args>  \tPerform tests." },
 	{ UNKNOWN, 0, "", "", Arg::None,
 	"\nExamples:\n"
-	"  ./bin/2DTDBEM --file mesh \n"
-	"  ./bin/2DTDBEM --file=mesh --timesteps=5000 --quadrature_points=10 \n"
-	"  ./bin/2DTDBEM -fmesh -t5000 -q10 \n"
+	"  ./bin/2DTDBEM --file cyl_res21 \n"
+	"  ./bin/2DTDBEM --file=cyl_res21 --timesteps=5000 --quadrature_points=10 \n"
+	"  ./bin/2DTDBEM -fcyl_res21 -t5000 -q10 \n"
 	"  ./bin/2DTDBEM --test computeConvolutions \n"
-	"\nThe input file is a specific Matlab type file which contains boundary edges, dt, mu, eps, and number of shapes."
+	"\nThe input file is a specific Matlab type file which contains boundary edges, dt, c, number of shapes, and an option to decide whther or not to use dual basis functions."
 	"\nThe results folder contains the output files, which have the same name as the input, plus an optional suffix.\n"
 	},
 	{ 0, 0, 0, 0, 0, 0 } };
@@ -76,8 +78,9 @@ const option::Descriptor usage[] = {
 int main(int argc, char* argv[])
 {
 	char filename[100], suffix[20];
-	UINT N_T = 10000;
+	UINT N_T = 1000;
 	UINT outer_points = 25;
+	UINT Lagrange_degree = 1;
 	bool cheat = false, add_suffix = false;
 
 	// Parse arguments
@@ -118,6 +121,9 @@ int main(int argc, char* argv[])
 		case FILENAME:
 			temp_str = opt.arg;
 			strcpy(filename, temp_str.c_str());
+			break;
+		case DEGREE:
+			Lagrange_degree = strtol(opt.arg, NULL, 10);
 			break;
 		case SUFFIX:
 			temp_str = opt.arg;
@@ -174,7 +180,6 @@ int main(int argc, char* argv[])
 	UINT inner_points = outer_points + 1;
 	UINT outer_points_sp = 5 * outer_points;
 	UINT inner_points_sp = 5 * outer_points + 1;
-	UINT Lagrange_degree = 1;
 	printf("\nSimulation parameters:"
 		"\n\tc = %e"
 		"\n\tdt = %e"
@@ -262,18 +267,6 @@ void run_Zmatrices_calculation(Zmatrices Z_matrices, double c, double dt, UINT L
 	printf("Compressing matrices into Matlab form...\n");
 	mat_t *matfpZ = NULL;
 	matvar_t *matvar = NULL;
-
-	/*// Save matrices as a Matlab struct
-	const unsigned nfields = 4;
-	const char *fieldnames[nfields] = { "S", "D", "Dp", "N" };
-	CreateMatFile(&matfpZ, result_file);
-	CreateStruct(&matvar, "Z_Matrices", fieldnames, nfields);
-	InsertCubeIntoStruct(&matvar, "S", S);
-	InsertCubeIntoStruct(&matvar, "D", D);
-	InsertCubeIntoStruct(&matvar, "Dp", Dp);
-	InsertCubeIntoStruct(&matvar, "N", N);
-	FinishStruct(&matfpZ, &matvar);
-	FinishMatFile(&matfpZ); */
 
 	// Save matrices as separate matlab variables
 	double NT = S.n_slices;
