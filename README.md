@@ -7,47 +7,36 @@ This implementation in C++ computes the 2D TDBEM operators, and is intended to b
 
 ## Installation
 To install, use the CMakeLists file. There are dependencies on the following libraries:
-* Armadillo
-* MatIO
+* OpenMP (optional but recommended for faster run-times)
 * Zlib
 * HDF5 (optional but recommended for large files)
-* OpenMP (optional but recommended for faster run-times)
+* MatIO
+* Armadillo
 
 ### Linux
-From a fresh install (e.g. Amazon Web Services EC2 Ubuntu):
+From a fresh install (e.g. Amazon Web Services EC2 Ubuntu), download and trasnfer the project to a custom directory, then run the `install.sh` script:
 ```
-sudo apt-get update
-sudo apt-get install build-essential liblapack-dev libarpack++2-dev libopenblas-dev cmake libhdf5-dev zlib1g-dev -y
-mkdir build && cd build
-wget ftp://ftp.hdfgroup.org/HDF5/current/src/hdf5-*.tar.gz
-wget http://sourceforge.net/projects/matio/files/latest/download
-wget http://sourceforge.net/projects/arma/files/armadillo-6.100.1.tar.gz
-tar zxf hdf5….tar.gz
-cd hdf5…
-sudo ./configure
-sudo make install
-cd ..
-tar zxf download
-cd matio…
+sudo apt-get install git
+git clone https://github.com/dan-phd/2DTDBEM.git
+cd 2DTDBEM
+chmod u+x install.sh
+sudo ./install.sh
+```
+Alternatively, you can install the above libraries (in order) yourself using the standard `./configure` and `sudo make install` commands. If HDF5 is installed, MatIO should be configured using:
+```
 ./configure --with-default-file-ver=7.3
+```
+Once the libraries have been installed, 2DTDBEM is installed using:
+```
+cd 2DTDBEM
+mkdir build results
+cd build
+sudo cmake ..
 sudo make install
 cd ..
-tar zxf armadillo….tar.gz
-cd armadillo…
-sudo ./configure
-sudo make install
 ```
-#### Installing TDBEM
-Transfer/download all files in the `2DTDBEM` to a custom directory, move to this directory and type the following:
-```
-mkdir build && cd build
-cmake ..
-make install
-cd ..
-export LD_LIBRARY_PATH=/usr/local/lib/
-mkdir results
-./bin/2DTDBEM
-```
+The program options can then be viewed with `./bin/2DTDBEM`.
+If you get `error wile loading shared libraries`, use `export LD_LIBRARY_PATH=/usr/local/lib/`.
 
 
 ## Beginning test
