@@ -23,7 +23,7 @@ chmod u+x install.sh
 sudo ./install.sh
 ```
 Alternatively, you can install the above libraries (in order) yourself using the standard `./configure` and `sudo make install` commands.
-If you don't have root privileges, you will need to install the libraries in a local folder, and use `./configure --prefix=/home/<local_folder>` or `cmake . -DCMAKE_INSTALL_PREFIX=/home/<local_lib_folder>`.
+If you don't have root privileges, you will need to install the libraries in a local folder, and use `./configure --prefix=/home/<local_lib_folder>` or `cmake . -DCMAKE_INSTALL_PREFIX=/home/<local_lib_folder>`.
 If HDF5 is installed, MatIO should be configured using:
 ```
 ./configure --with-default-file-ver=7.3
@@ -36,7 +36,7 @@ sudo make install
 cd ..
 ```
 The program options can then be viewed with `./bin/2DTDBEM`.
-If you get `error wile loading shared libraries`, use `export LD_LIBRARY_PATH=/usr/local/lib/` for root users, or `export LD_LIBRARY_PATH=/home/<local_folder>/lib` otherwise.
+If you get `error wile loading shared libraries`, use `export LD_LIBRARY_PATH=/usr/local/lib/` for root users, or `export LD_LIBRARY_PATH=/home/<local_lib_folder>/lib` otherwise.
 
 
 ## Beginning test

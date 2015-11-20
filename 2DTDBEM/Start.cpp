@@ -263,7 +263,7 @@ void run_Zmatrices_calculation(Zmatrices Z_matrices, double c, double dt, UINT L
 	// Combine singular and hypersingular contributions of N operator
 	cube N( Nh + Ns/(c*c) );
 
-	// Output MAT file as a struct that stores the operators
+	// Output MAT file that stores the operators
 	printf("Compressing matrices into Matlab form...\n");
 	mat_t *matfpZ = NULL;
 	matvar_t *matvar = NULL;

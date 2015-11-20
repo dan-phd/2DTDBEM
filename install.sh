@@ -7,6 +7,7 @@ E_NOTROOT=87   # Non-root exit error.
 
 
 # Run as root, of course.
+sudo su
 if [ "$UID" -ne "$ROOT_UID" ]
 then
   echo "Must be root to run this script."
@@ -22,31 +23,25 @@ else
 fi
 
 # get required packages
-sudo apt-get update
-sudo apt-get install build-essential liblapack-dev libarpack++2-dev libopenblas-dev cmake libhdf5-dev zlib1g-dev unzip -y
+apt-get update
+apt-get install build-essential liblapack-dev libarpack++2-dev libopenblas-dev cmake libhdf5-dev zlib1g-dev unzip -y
 
 # download and install HDF5, MatIO and Armadillo
-cd 2DTDBEM || {
+mkdir build
+cd build || {
   echo "Cannot change to necessary directory." >&2
   exit $E_XCD;
 }
-mkdir build
-cd build
-wget http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.15-patch1.tar.gz http://downloads.sourceforge.net/project/matio/matio/1.5.2/matio-1.5.2.zip http://sourceforge.net/projects/arma/files/armadillo-6.100.1.tar.gz
-tar zxf hdf5-1.8.15-patch1.tar.gz
-cd hdf5-1.8.15-patch1
-./configure
-sudo make install
-cd ..
+wget http://downloads.sourceforge.net/project/matio/matio/1.5.2/matio-1.5.2.zip http://sourceforge.net/projects/arma/files/armadillo-6.100.1.tar.gz
 unzip matio-1.5.2.zip
 cd matio-1.5.2
 ./configure --with-default-file-ver=7.3
-sudo make install
+make install
 cd ..
 tar zxf armadillo-6.100.1.tar.gz
 cd armadillo-6.100.1
 ./configure
-sudo make install
+make install
 cd ..
 
 
