@@ -20,6 +20,7 @@ using namespace arma;
 
 #define	VECTOR			vec
 #define	MATRIX			mat
+#define GRID			vector<POINT2D>
 #define	GEOMETRY		vector<EDGE>
 #define	POLYMAT			vector<CPiecewisePol>
 #define POLYCUBE		vector<cube>

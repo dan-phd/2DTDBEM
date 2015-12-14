@@ -7,7 +7,9 @@
 
 int CreateMatFile(mat_t **file_ptr, const char *filename)
 {
-	mat_t *file_p = Mat_CreateVer(filename, NULL, MAT_FT_DEFAULT);
+	// Create .mat file container, and decide which standard to use -
+	// choose from MAT_FT_DEFAULT (chooses for you), MAT_FT_MAT5, or MAT_FT_MAT73
+	mat_t *file_p = Mat_CreateVer(filename, NULL, MAT_FT_MAT73);
 	*file_ptr = file_p;
 	if (NULL == *file_ptr) {
 		fprintf(stderr, "Error opening MAT file %s\n", filename);
@@ -110,7 +112,8 @@ void FinishStruct(mat_t **file_ptr, matvar_t **struct_in)
 	Mat_VarFree(*struct_in);
 }
 
-bool ReadGeometry(GEOMETRY& geometry, double& dt, double& c, double& num_shapes, double& dual, const char* fname)
+bool ReadGeometry(GEOMETRY& geometry, double& dt, double& c,
+	double& num_shapes, double& dual, const char* fname)
 {
 	mat_t *matfp = NULL;
 	matvar_t *matvar = NULL, *tmp = NULL;
@@ -163,6 +166,38 @@ bool ReadGeometry(GEOMETRY& geometry, double& dt, double& c, double& num_shapes,
 		memcpy(&edge.shape, tmp->data, tmp->nbytes);
 
 		geometry.push_back(edge);
+		tmpp = matvar;
+		index++;
+	}
+
+	Mat_VarFree(tmpp);
+	Mat_Close(matfp);
+	return true;
+}
+
+
+bool ReadScatteredFieldGeometry(GRID& rho, const char* fname)
+{
+
+	mat_t *matfp = NULL;
+	matvar_t *matvar = NULL, *tmp = NULL;
+	matfp = Mat_Open(fname, MAT_ACC_RDONLY);
+
+	// Get rho
+	matvar = Mat_VarRead(matfp, "rho");
+	if (matvar == NULL)	return false;
+	const int num_points = (int)matvar->dims[0];
+	matvar_t* tmpp;
+	POINT2D point;
+	int index = 0;
+	while (index<num_points)
+	{
+		tmp = Mat_VarGetStructFieldByName(matvar, "x", index);
+		memcpy(&point.x, tmp->data, tmp->nbytes);
+		tmp = Mat_VarGetStructFieldByName(matvar, "y", index);
+		memcpy(&point.y, tmp->data, tmp->nbytes);
+
+		rho.push_back(point);
 		tmpp = matvar;
 		index++;
 	}

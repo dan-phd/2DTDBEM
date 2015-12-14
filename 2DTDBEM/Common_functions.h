@@ -44,7 +44,7 @@ void setup_omp()
 		if (tid == 0)
 		{
 			nthreads = omp_get_num_threads();
-			printf("\nTotal threads = %i\n\n", nthreads);
+			printf("\nTotal threads = %i\n", nthreads);
 		}
 	}
 	omp_set_num_threads(nthreads);

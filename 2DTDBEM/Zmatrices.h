@@ -14,6 +14,7 @@ public:
 
 	//functions
 	void	compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns);
+	void	compute_fields(cube& S, cube& D, const GRID& rho);
 	void	use_cheat();
 
 	//properties:
@@ -37,14 +38,13 @@ private:
 	//functions
 	void	Z_calc(const UINT& m, const UINT& n, const POINT2D& t_m, const POINT2D& t_n, const double& lmn,
 					CLagrange_interp shiftedTB_D, CLagrange_interp shiftedTB_Nh, CLagrange_interp shiftedTB_Ns,
-					const UINT& inner_quad_points, const UINT& outer_quad_points,
 					MATRIX& G_dd, MATRIX& G_SZ, MATRIX& G_ZS, MATRIX& G_SS, MATRIX& G_ZZ,
 					MATRIX& coeffs_nh, MATRIX& coeffs_ns, MATRIX& coeffs_d, MATRIX& coeffs_s, MATRIX& coeffs_dp);
 	void	SPD_cheat_coeffs(MATRIX** Z, UINT m, UINT n, UINT num_to_skip);
 	void	SPD_cheat(MATRIX& Z);
 	void	lgquad1(UINT N, VECTOR& s, VECTOR& w);
 	void	deletepMat(MATRIX** pMat, int count);
-	void	find_distances_between_2_edges(UINT m, UINT n, MATRIX& P, MATRIX& dn_p, MATRIX& dn_,
+	void	find_distances_between_2_edges(EDGE edge_m, EDGE edge_n, MATRIX& P, MATRIX& dn_p, MATRIX& dn_,
 					VECTOR& s_i, VECTOR& s_o);
 	void	make_distances_lookup_table();
 	int		getMax(POLYMAT& obj);
