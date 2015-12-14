@@ -115,8 +115,10 @@ int main(int argc, char* argv[])
 			// not possible - handled above
 		case CHEAT:
 			cheat = true;
+			break;
 		case SCATTERED:
 			compute_scattered_field = true;
+			break;
 		case NUM_TIMESTEPS:
 			if (opt.arg)
 				N_T = strtol(opt.arg, NULL, 10);
@@ -213,7 +215,7 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		Z_matrices.basis_function_Z = BasisFunction.createSquare(geometry, false);
+		Z_matrices.basis_function_Z = BasisFunction.createSquare(geometry, true);
 		Z_matrices.basis_function_S = BasisFunction.createHat(geometry, false, num_shapes);
 		Z_matrices.test_function_Z = BasisFunction.createSquare(geometry, true);
 		Z_matrices.test_function_S = BasisFunction.createHat(geometry, true, num_shapes);
@@ -259,6 +261,9 @@ void run_Zmatrices_calculation(Zmatrices& Z_matrices, UINT Lagrange_degree,
 	// Lagrange interpolators (temporal basis functions)
 	CLagrange_interp timeBasis = CLagrange_interp(dt, Lagrange_degree);
 	Z_matrices.timeBasis_D = timeBasis;
+	CLagrange_interp timeBasis_Nh = timeBasis;
+	timeBasis_Nh.integrate();
+	Z_matrices.timeBasis_Nh = timeBasis_Nh;
 	CLagrange_interp timeBasis_Ns = timeBasis;
 	timeBasis_Ns.diff();
 	Z_matrices.timeBasis_Ns = timeBasis_Ns;

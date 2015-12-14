@@ -99,21 +99,21 @@ MATRIX Zmatrices::Gcoeffs_create(VECTOR& so, VECTOR& wo, VECTOR&si, VECTOR& wi, 
 	MATRIX G(test_points*(max_test_deg + 1), basis_points*(max_basis_deg + 1), fill::zeros);
 
 	MATRIX tmp2(test_points, basis_points);
-	for (int pm = 0; pm < max_deg_basis + 1; pm++)
+	for (int pm = 0; pm < max_deg_test + 1; pm++)
 	{
-		int offset_m = pm*basis_points;
+		int offset_m = pm*test_points;
 
-		for (int pn = 0; pn < max_deg_test + 1; pn++)
+		for (int pn = 0; pn < max_deg_basis + 1; pn++)
 		{
-			int offset_n = pn*test_points;
+			int offset_n = pn*basis_points;
 
 			for (int i = 0; i < basis_points; i++)
 			{
-				tmp2.col(i) = Gcoeffs_test.col(pn) * Gcoeffs_basis(i, pm);
+				tmp2.col(i) = Gcoeffs_test.col(pm) * Gcoeffs_basis(i, pn);
 			}
 
-			G(span(offset_n, offset_n + test_points - 1),
-				span(offset_m, offset_m + basis_points - 1)) = tmp2;	//( span(rows),span(cols) )
+			G(span(offset_m, offset_m + test_points - 1),
+				span(offset_n, offset_n + basis_points - 1)) = tmp2;		//( span(rows),span(cols) )
 		}
 	}
 
@@ -223,15 +223,15 @@ MATRIX Zmatrices::Perform_quadrature(MATRIX& G_coeffs, MATRIX& F)
 
 	for (UINT pm = 0; pm < max_test_deg + 1; pm++)
 	{
-		int offset_m(pm*basis_points);
+		int offset_m(pm*test_points);
 
 		for (UINT pn = 0; pn < max_basis_deg + 1; pn++)
 		{
-			int offset_n(pn*test_points);
+			int offset_n(pn*basis_points);
 
 			// sum(G_coeffs.*F)
-			res(pm, pn) = accu(G_coeffs(span(offset_m, offset_m + basis_points - 1),
-				span(offset_n, offset_n + test_points - 1)) % F);   //( span(rows),span(cols) )
+			res(pm, pn) = accu(G_coeffs(span(offset_m, offset_m + test_points - 1),
+				span(offset_n, offset_n + basis_points - 1)) % F);   
 		}
 	}
 
