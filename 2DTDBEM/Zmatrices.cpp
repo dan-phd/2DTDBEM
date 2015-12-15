@@ -330,6 +330,8 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 	int N_F = idx_basis_Z.n_rows;
 
 	//Containers for operators (2D regions with 3rd dimension varying with time)
+	printf("\nEstimated memory = %e MB...",
+		6. * (double)(sizeof(S) + sizeof(double)*(N_F*N_F*z_N_T)) / 1e6);
 	S.zeros(N_F, N_F, z_N_T);
 	D.zeros(N_F, N_F, z_N_T);
 	Dp.zeros(N_F, N_F, z_N_T);
@@ -355,6 +357,8 @@ void Zmatrices::compute(cube& S, cube& D, cube& Dp, cube& Nh, cube& Ns)
 	POINT2D t_m, t_n;
 	double l_m, l_n;
 	CLagrange_interp shiftedTB_D, shiftedTB_Nh, shiftedTB_Ns;
+
+	printf("\n\n%s\n\n", "Computing operators...");
 
 #pragma omp parallel default(shared) private(k,m,n,shiftedTB_D, shiftedTB_Nh, shiftedTB_Ns,t_m,t_n,l_m,l_n)
 	{
@@ -546,6 +550,8 @@ void Zmatrices::compute_fields(cube& S, cube& D, const GRID& rho)
 	UINT N_F = idx_basis_Z.n_rows;
 
 	//Containers for operators (2D regions with 3rd dimension varying with time)
+	printf("\nEstimated memory = %e MB",
+		2. * (double)(sizeof(S) + sizeof(double)*(N_points*N_F*z_N_T)) / 1e6);
 	S.zeros(N_points, N_F, z_N_T);
 	D.zeros(N_points, N_F, z_N_T);
 
@@ -562,6 +568,8 @@ void Zmatrices::compute_fields(cube& S, cube& D, const GRID& rho)
 	double l_n;
 	CLagrange_interp shiftedTB_D, shiftedTB_Ns;
 	MATRIX TCZ(1, 1, fill::ones);
+
+	printf("\n\n%s\n\n", "Computing operators...");
 
 #pragma omp parallel default(shared) private(k,m,n,shiftedTB_D, shiftedTB_Ns,l_n)
 	{

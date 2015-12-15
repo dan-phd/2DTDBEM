@@ -275,7 +275,6 @@ void run_Zmatrices_calculation(Zmatrices& Z_matrices, UINT Lagrange_degree,
 
 	// do main computation and time
 	cube S, D, Dp, Nh, Ns;
-	printf("\n%s\n\n", "Computing operators...");
 #ifdef OS_WIN
 	clock_t t;
 #else
@@ -330,7 +329,7 @@ void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagra
 		"\n\tN_T = %i"
 		"\n\tinner_points = %i"
 		"\n\tLagrange_degree = %i\n\n",
-		rho.size(), c, dt, Z_matrices.z_N_T, inner_points, Lagrange_degree);
+		(int)rho.size(), c, dt, Z_matrices.z_N_T, inner_points, Lagrange_degree);
 
 	// Lagrange interpolators (temporal basis functions)
 	CLagrange_interp timeBasis = CLagrange_interp(dt, Lagrange_degree);
