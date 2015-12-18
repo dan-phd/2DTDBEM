@@ -639,8 +639,8 @@ void Zmatrices::compute_fields(cube& S, cube& D, const GRID& rho)
 	}
 
 	//Free memory
-	deletepMat(coeffs_d, N_E);
-	deletepMat(coeffs_s, N_E);
+	deletepMat(coeffs_d, N_points);
+	deletepMat(coeffs_s, N_points);
 
 }
 
