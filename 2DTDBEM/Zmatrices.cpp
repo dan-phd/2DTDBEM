@@ -555,7 +555,7 @@ void Zmatrices::compute_fields(cube& S, cube& D, const GRID& rho)
 	S.zeros(N_points, N_F, z_N_T);
 	D.zeros(N_points, N_F, z_N_T);
 
-	//Pad the interpolators so the sizes match Nh
+	//Pad the interpolators so they match sizes
 	CLagrange_interp tmp_Lag = timeBasis_D;
 	timeBasis_Ns = tmp_Lag.pad_coeffs(timeBasis_Ns);
 	tempconvs = CTempConvs();

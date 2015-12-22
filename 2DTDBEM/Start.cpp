@@ -12,7 +12,7 @@ void run_Zmatrices_calculation(Zmatrices& Z_matrices, UINT Lagrange_degree,
 	UINT outer_points, const char* result_file);
 
 void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagrange_degree,
-	GRID& rho, const char* result_file);
+	MATRIX M, MATRIX J, GRID& rho, double material_param, const char* result_file);
 
 // Argument types for option parser
 struct Arg : public option::Arg
@@ -173,14 +173,15 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "\n\nError opening file. \n"); return false;
 	}
 	// if computing scattered field, read 'rho'
-	GRID rho;
+	GRID rho; MATRIX M, J; double material_parameter;
 	if (compute_scattered_field)
 	{
-		if (!ReadScatteredFieldGeometry(rho, str1.c_str()))
+		if (!ReadScatteredFieldGeometry(M, J, rho, material_parameter, N_T, str1.c_str()))
 		{
 			fprintf(stderr, "\n\nError opening file for scattered field. \n");
 			return false;
 		}
+		//M.print("M");
 	}
 	UINT num_shapes = (UINT)num_shapes_;
 	UINT dual = (UINT)dual_;
@@ -228,7 +229,8 @@ int main(int argc, char* argv[])
 
 	// Perform computation
 	if (compute_scattered_field)
-		run_Zmatrices_calculation_scattered_field(Z_matrices, Lagrange_degree, rho, result_file);
+		run_Zmatrices_calculation_scattered_field(Z_matrices, Lagrange_degree,
+			M, J, rho, material_parameter, result_file);
 	else
 		run_Zmatrices_calculation(Z_matrices, Lagrange_degree, outer_points, result_file);
 
@@ -316,36 +318,34 @@ void run_Zmatrices_calculation(Zmatrices& Z_matrices, UINT Lagrange_degree,
 }
 
 void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagrange_degree,
-	GRID& rho, const char* result_file)
+	MATRIX M, MATRIX J, GRID& rho, double material_param, const char* result_file)
 {
 	// Simulation parameters
+	int N_T = Z_matrices.z_N_T;
 	double dt = Z_matrices.z_dt;
 	double c = Z_matrices.z_c;
 	UINT inner_points = 1;
 	printf("\nSimulation parameters for scattered field:"
 		"\n\tNumber of grid vertices = %i"
+		"\n\tMaterial parameter = %e"
 		"\n\tc = %e"
 		"\n\tdt = %e"
 		"\n\tN_T = %i"
 		"\n\tinner_points = %i"
 		"\n\tLagrange_degree = %i\n\n",
-		(int)rho.size(), c, dt, Z_matrices.z_N_T, inner_points, Lagrange_degree);
+		(int)rho.size(), material_param, c, dt, N_T, inner_points, Lagrange_degree);
 
 	// Lagrange interpolators (temporal basis functions)
 	CLagrange_interp timeBasis = CLagrange_interp(dt, Lagrange_degree);
 	Z_matrices.timeBasis_D = timeBasis;
-	CLagrange_interp timeBasis_Nh = timeBasis;
-	timeBasis_Nh.integrate();
-	Z_matrices.timeBasis_Nh = timeBasis_Nh;
 	CLagrange_interp timeBasis_Ns = timeBasis;
-	timeBasis_Ns.diff();
+	//timeBasis_Ns.diff();			// TODO: differentiated time basis for S?
 	Z_matrices.timeBasis_Ns = timeBasis_Ns;
 
 	Z_matrices.z_inner_points = inner_points;
 
 	// do main computation and time
 	cube S, D;
-	printf("\n%s\n\n", "Computing operators...");
 #ifdef OS_WIN
 	clock_t t;
 #else
@@ -356,24 +356,45 @@ void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagra
 	finish_timing(t);
 
 	// TODO: Factor of c?
-	D /= c;
+	//D /= c;
+	S *= material_param;
+
+	MATRIX rhs(D.n_rows, N_T, fill::zeros);
+	VECTOR rhs_(D.n_rows, fill::zeros);
+	printf("\n%s\n\n", "Marching on in time...");
+	int j(0), k(0);
+//#pragma omp parallel default(shared) private(j,k)
+	for (j = 0; j < N_T; j++)
+	{
+//#pragma omp for
+		for (k = 0; k < j+1; k++)
+		{
+			// TODO: integration needed?
+			rhs_ += D.slice(k)*M.col(j - k) - S.slice(k)*J.col(j - k);
+		}
+
+		rhs.col(j) = rhs_;
+
+		//Status
+		printf("\r%i ", j + 1);
+		fflush(stdout);
+	}
 
 	// Output MAT file that stores the operators
-	printf("Compressing matrices into Matlab form...\n");
+	printf("\n\nCompressing matrices into Matlab form...\n");
 	mat_t *matfpZ = NULL;
 	matvar_t *matvar = NULL;
 
 	// Save matrices as separate matlab variables
-	double NT = S.n_slices;
 	if (CreateMatFile(&matfpZ, result_file) == -1)
 	{
 		return;
 	}
 	else
 	{
+		double NT = (double)N_T;
 		InsertVar(&matfpZ, "N_T", &NT);
-		InsertCube(&matfpZ, "S", S);
-		InsertCube(&matfpZ, "D", D);
+		InsertMatrix(&matfpZ, "E", rhs);
 		FinishMatFile(&matfpZ);
 
 		// free memory
@@ -381,5 +402,4 @@ void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagra
 
 		printf("\t done. \nOutput file location: %s\n\n", result_file);
 	}
-
 }

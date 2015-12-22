@@ -35,13 +35,35 @@ void InsertVar(mat_t **file_ptr, const char *name, double *D)
 	}
 }
 
+void InsertMatrix(mat_t **file_ptr, const char *name, MATRIX &D)
+{
+	//write MATRIX D
+	size_t dims[2] = { D.n_rows, D.n_cols };
+	int tot = D.n_elem;
+	double *tmp = new double[tot];
+	for (int i = 0; i < tot; i++)
+		tmp[i] = D(i);
+
+	matvar_t *field;
+	field = Mat_VarCreate(name, MAT_C_DOUBLE, MAT_T_DOUBLE, 2, dims, tmp, 0);
+
+	if (NULL == field) {
+		fprintf(stderr, "Error creating variable for '%s'\n", name);
+	}
+	else {
+		Mat_VarWrite(*file_ptr, field, MAT_COMPRESSION_ZLIB);
+		Mat_VarFree(field);
+	}
+	delete tmp;
+}
+
 void InsertCube(mat_t **file_ptr, const char *name, cube &D)
 {
 	//write cube D
 	size_t dims[3] = { D.n_rows, D.n_cols, D.n_slices };
 	int tot = D.n_elem;
 	double *tmp = new double[tot];
-	for (int i = 0; i<tot; i++)
+	for (int i = 0; i < tot; i++)
 		tmp[i] = D(i);
 
 	matvar_t *field;
@@ -80,7 +102,7 @@ void InsertCubeIntoStruct(matvar_t **struct_in, const char *name, cube &D)
 	size_t dims[3] = { D.n_rows, D.n_cols, D.n_slices };
 	int tot = D.n_elem;
 	double *tmp = new double[tot];
-	for (int i = 0; i<tot; i++)
+	for (int i = 0; i < tot; i++)
 		tmp[i] = D(i);
 
 	matvar_t *field;
@@ -97,7 +119,7 @@ void InsertMatrixIntoStruct(matvar_t **struct_in, const char *name, MATRIX &D)
 	int tot = D.n_elem;
 	double *tmp = new double[tot];
 
-	for (int i = 0; i<tot; i++)
+	for (int i = 0; i < tot; i++)
 		tmp[i] = D(i);
 
 	matvar_t *field;
@@ -148,7 +170,7 @@ bool ReadGeometry(GEOMETRY& geometry, double& dt, double& c,
 	matvar_t* tmpp;
 	EDGE edge;
 	int index = 0;
-	while (index<num_edges)
+	while (index < num_edges)
 	{
 		tmp = Mat_VarGetStructFieldByName(matvar, "he_idx", index);
 		memcpy(&edge.he_idx, tmp->data, tmp->nbytes);
@@ -176,12 +198,48 @@ bool ReadGeometry(GEOMETRY& geometry, double& dt, double& c,
 }
 
 
-bool ReadScatteredFieldGeometry(GRID& rho, const char* fname)
+bool ReadScatteredFieldGeometry(MATRIX& M, MATRIX& J, GRID& rho,
+	double& material_parameter, UINT N_T_set_by_user, const char* fname)
 {
 
 	mat_t *matfp = NULL;
 	matvar_t *matvar = NULL, *tmp = NULL;
 	matfp = Mat_Open(fname, MAT_ACC_RDONLY);
+
+	// Get c
+	matvar = Mat_VarRead(matfp, "material_parameter");
+	memcpy(&material_parameter, matvar->data, matvar->data_size);
+
+	// Get M
+	matvar = Mat_VarRead(matfp, "M");
+	if (matvar == NULL)	return false;
+	const int N_V = (int)matvar->dims[0];
+	const int N_T = (int)matvar->dims[1];
+	if ((int)N_T_set_by_user>N_T)
+	{
+		fprintf(stderr, "\n\nSpecified number of timesteps exceeds that of input file. \n");
+		return false;
+	}
+	MATRIX tmp_mat(N_V, N_T, fill::zeros);
+	int num_elements = N_T * N_V;
+	const double *M_data = static_cast<const double*>(matvar->data);
+	for (int i = 0; i < num_elements; ++i)
+	{
+		tmp_mat(i) = M_data[i];
+	}
+	M = tmp_mat;
+	tmp_mat.zeros();
+
+	// Get J
+	matvar = Mat_VarRead(matfp, "J");
+	if (matvar == NULL)	return false;
+	const double *J_data = static_cast<const double*>(matvar->data);
+	for (int i = 0; i < num_elements; ++i)
+	{
+		tmp_mat(i) = J_data[i];
+	}
+	J = tmp_mat;
+	tmp_mat.clear();
 
 	// Get rho
 	matvar = Mat_VarRead(matfp, "rho");
@@ -190,7 +248,7 @@ bool ReadScatteredFieldGeometry(GRID& rho, const char* fname)
 	matvar_t* tmpp;
 	POINT2D point;
 	int index = 0;
-	while (index<num_points)
+	while (index < num_points)
 	{
 		tmp = Mat_VarGetStructFieldByName(matvar, "x", index);
 		memcpy(&point.x, tmp->data, tmp->nbytes);
