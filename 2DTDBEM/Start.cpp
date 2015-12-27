@@ -339,7 +339,7 @@ void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagra
 	CLagrange_interp timeBasis = CLagrange_interp(dt, Lagrange_degree);
 	Z_matrices.timeBasis_D = timeBasis;
 	CLagrange_interp timeBasis_Ns = timeBasis;
-	//timeBasis_Ns.diff();			// TODO: differentiated time basis for S?
+	timeBasis_Ns.diff();
 	Z_matrices.timeBasis_Ns = timeBasis_Ns;
 
 	Z_matrices.z_inner_points = inner_points;
@@ -355,8 +355,6 @@ void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagra
 	Z_matrices.compute_fields(S, D, rho);
 	finish_timing(t);
 
-	// TODO: Factor of c?
-	//D /= c;
 	S *= material_param;
 
 	MATRIX rhs(D.n_rows, N_T, fill::zeros);
@@ -369,11 +367,12 @@ void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagra
 //#pragma omp for
 		for (k = 0; k < j+1; k++)
 		{
-			// TODO: integration needed?
-			rhs_ += D.slice(k)*M.col(j - k) - S.slice(k)*J.col(j - k);
+			// TODO: DM-SJ or DM+SJ?
+			rhs_ += D.slice(k)*M.col(j - k) + S.slice(k)*J.col(j - k);
 		}
 
 		rhs.col(j) = rhs_;
+		rhs_.zeros();
 
 		//Status
 		printf("\r%i ", j + 1);
