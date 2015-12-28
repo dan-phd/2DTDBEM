@@ -19,7 +19,7 @@ From a fresh install (e.g. Amazon Web Services EC2 Ubuntu), download the project
 sudo apt-get install git
 git clone https://github.com/dan-phd/2DTDBEM.git
 cd 2DTDBEM
-chmod u+x install.sh
+chmod +x install.sh
 sudo ./install.sh
 ```
 Alternatively, you can install the above libraries (in order) yourself using the standard `./configure` and `sudo make install` commands.

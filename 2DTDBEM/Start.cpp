@@ -367,8 +367,7 @@ void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagra
 //#pragma omp for
 		for (k = 0; k < j+1; k++)
 		{
-			// TODO: DM-SJ or DM+SJ?
-			rhs_ += D.slice(k)*M.col(j - k) + S.slice(k)*J.col(j - k);
+			rhs_ += D.slice(k)*M.col(j - k) - S.slice(k)*J.col(j - k);
 		}
 
 		rhs.col(j) = rhs_;
