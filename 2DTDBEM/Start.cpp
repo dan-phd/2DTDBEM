@@ -290,7 +290,7 @@ void run_Zmatrices_calculation(Zmatrices& Z_matrices, UINT Lagrange_degree,
 	cube N(Nh + Ns / (c*c));
 
 	// Output MAT file that stores the operators
-	printf("Compressing matrices into Matlab form...\n");
+	printf("Compressing matrices into Matlab form...");
 	mat_t *matfpZ = NULL;
 	matvar_t *matvar = NULL;
 
@@ -312,7 +312,7 @@ void run_Zmatrices_calculation(Zmatrices& Z_matrices, UINT Lagrange_degree,
 		// free memory
 		S.clear(), D.clear(), Dp.clear(), Ns.clear(), Nh.clear();
 
-		printf("\t done. \nOutput file location: %s\n\n", result_file);
+		printf("\t - done. \nOutput file location: %s\n\n", result_file);
 	}
 
 }
@@ -344,7 +344,7 @@ void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagra
 
 	Z_matrices.z_inner_points = inner_points;
 
-	// do main computation and time
+	// do main computation
 	cube S, D;
 #ifdef OS_WIN
 	clock_t t;
@@ -353,13 +353,13 @@ void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagra
 #endif
 	start_timing(t);
 	Z_matrices.compute_fields(S, D, rho);
+	S *= material_param;
 	finish_timing(t);
 
-	S *= material_param;
-
+	start_timing(t);
 	MATRIX rhs(D.n_rows, N_T, fill::zeros);
 	VECTOR rhs_(D.n_rows, fill::zeros);
-	printf("\n%s\n\n", "Marching on in time...");
+	printf("%s\n\n", "Marching on in time...");
 	int j(0), k(0);
 //#pragma omp parallel default(shared) private(j,k)
 	for (j = 0; j < N_T; j++)
@@ -378,8 +378,10 @@ void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagra
 		fflush(stdout);
 	}
 
+	finish_timing(t);
+
 	// Output MAT file that stores the operators
-	printf("\n\nCompressing matrices into Matlab form...\n");
+	printf("Compressing matrices into Matlab form...");
 	mat_t *matfpZ = NULL;
 	matvar_t *matvar = NULL;
 
@@ -398,6 +400,6 @@ void run_Zmatrices_calculation_scattered_field(Zmatrices& Z_matrices, UINT Lagra
 		// free memory
 		S.clear(), D.clear();
 
-		printf("\t done. \nOutput file location: %s\n\n", result_file);
+		printf("\t- done.\nOutput file location: %s\n\n", result_file);
 	}
 }

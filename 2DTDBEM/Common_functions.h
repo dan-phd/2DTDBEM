@@ -15,7 +15,7 @@ void start_timing(clock_t& t)
 void finish_timing(clock_t& t)
 {
 	t = clock() - t;
-	printf("\t - complete. \n\nThe elapsed time is %f seconds\n\n",
+	printf("\t - complete. The elapsed time is %f seconds\n\n",
 		((float)t) / CLOCKS_PER_SEC);
 }
 #else
@@ -28,7 +28,7 @@ void finish_timing(struct timeval *start_time)
 {
 	struct timeval end_time;
 	gettimeofday(&end_time, NULL);
-	printf("\n\nComplete. The elapsed time is %f seconds\n\n",
+	printf("\t - complete. The elapsed time is %f seconds\n\n",
 		end_time.tv_sec - start_time->tv_sec + (end_time.tv_usec - start_time->tv_usec) / 1e6);
 }
 #endif
