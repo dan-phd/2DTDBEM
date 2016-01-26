@@ -57,17 +57,17 @@ const option::Descriptor usage[] = {
 	{ UNKNOWN, 0, "", "", Arg::Unknown, "USAGE: ./bin/2DTDBEM [options]\n\n"
 	"Options:" },
 	{ HELP, 0, "h", "help", Arg::None, "  -h,  \t--help  \tPrint usage and exit." },
-	{ FILENAME, 0, "f", "file", Arg::Required, "  -f <arg>, \t--file=<arg>  \tInput mesh filename, without extension (required)." },
-	{ NUM_TIMESTEPS, 0, "t", "timesteps", Arg::Numeric, "  -t <num>, \t--timesteps=<num>  \tNumber of timesteps. [1000]" },
-	{ QUAD_POINTS, 0, "q", "quadrature_points", Arg::Numeric, "  -q <num>, \t--quadrature_points=<num>"
+	{ FILENAME, 0, "f", "file", Arg::Required, "  -f<arg>, \t--file=<arg>  \tInput mesh filename, without extension (required)." },
+	{ NUM_TIMESTEPS, 0, "t", "timesteps", Arg::Numeric, "  -t<num>, \t--timesteps=<num>  \tNumber of timesteps. [1000]" },
+	{ QUAD_POINTS, 0, "q", "quadrature_points", Arg::Numeric, "  -q<num>, \t--quadrature_points=<num>"
 	" \tNumber of Gaussian quadrature points used on the outer integral. [25]" },
-	{ DEGREE, 0, "d", "degree", Arg::Numeric, "  -d <num>, \t--degree=<num>"
+	{ DEGREE, 0, "d", "degree", Arg::Numeric, "  -d<num>, \t--degree=<num>"
 	" \tLagrange interpolator degree to use for the temporal convolutions. [1]" },
-	{ SUFFIX, 0, "s", "suffix", Arg::Optional, "  -s <arg>, \t--suffix=<arg>  \tTo attach to end of result filename." },
+	{ SUFFIX, 0, "s", "suffix", Arg::Optional, "  -s<arg>, \t--suffix=<arg>  \tSuffix to attach to end of result filename." },
 	{ CHEAT, 0, "c", "cheat", Arg::None, "  -c,  \t--cheat  \tUse cheat for faster computation"
-	" (only applicable for symmetric cylinder since matrices are SPD)." },
-	{ SCATTERED, 0, "S", "scattered", Arg::None, "  -S <args>, \t--scattered <args>  \tCompute scattered field." },
-	{ TESTS, 0, "T", "test", Arg::Required, "  -T <args>, \t--test <args>  \tPerform tests." },
+	" (only applicable for cylinder with symmetric edge lengths)." },
+	{ SCATTERED, 0, "S", "scattered", Arg::None, "  -S, \t--scattered  \tCompute scattered field." },
+	{ TESTS, 0, "T", "test", Arg::Required, "  -T<args>, \t--test <args>  \tPerform test specified in the argument." },
 	{ UNKNOWN, 0, "", "", Arg::None,
 	"\nExamples:\n"
 	"  ./bin/2DTDBEM --file cyl_res21 \n"
@@ -75,7 +75,7 @@ const option::Descriptor usage[] = {
 	"  ./bin/2DTDBEM -fcyl_res21 -t300 -q4 -c \n"
 	"  ./bin/2DTDBEM --scattered -fscattered_mesh -t5000  \n"
 	"  ./bin/2DTDBEM --test computeConvolutions \n"
-	"\nThe input file is a specific Matlab type file which contains boundary edges, dt, c, number of shapes, and an option to decide whther or not to use dual basis functions."
+	"\nThe input file is a specific Matlab type file which contains boundary edges, dt, c, number of shapes, and an option to decide whether or not to use dual basis functions."
 	"\nThe results folder contains the output files, which have the same name as the input, plus an optional suffix.\n"
 	},
 	{ 0, 0, 0, 0, 0, 0 } };
@@ -181,7 +181,6 @@ int main(int argc, char* argv[])
 			fprintf(stderr, "\n\nError opening file for scattered field. \n");
 			return false;
 		}
-		//M.print("M");
 	}
 	UINT num_shapes = (UINT)num_shapes_;
 	UINT dual = (UINT)dual_;
