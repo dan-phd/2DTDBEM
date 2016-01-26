@@ -46,7 +46,7 @@ If you get `error wile loading shared libraries`, use `export LD_LIBRARY_PATH=/u
 
 ### Windows
 First download and unzip the armadillo and MatIO libraries to a low level directory (such as `C:\build`).
-Edit the user environment variables for your machine to include the directories to the unzipped libraries in variables named `ARMADILLO_ROOT` AND `MATIO_ROOT`.
+Edit the user environment variables for your machine to include the directories to the unzipped libraries in variables named `ARMADILLO_ROOT` and `MATIO_ROOT`.
 To run the code using Visual Studio in Windows, open the `2DTDBEM.sln` file located in the top directory.
 Make sure that the correct solution platform is being used (Win32 or x64) and check the following settings are configured correctly:
 * Configuration Properties -\> C/C++ -\> General -\> Additional Include Directories:
@@ -59,6 +59,7 @@ Make sure that the correct solution platform is being used (Win32 or x64) and ch
  * `lapack_win64_MT.lib`
  * `blas_win64_MT.lib`
  * `libmatio.lib`
+
 After building the Visual Studio project but before running, make sure that `lapack_win64_MT.dll`, `blas_win64_MT.dll`, and `libmatio.dll` is copied to the runtime directory i.e. the same directory as the `2DTDBEM.exe file`.
 To run the application straight from Visual Studio, you can append program arguments in Configuration Properties -\> Command Arguments. The program
 can then be run without the debugger by pressing `Ctrl` + `F5`.
