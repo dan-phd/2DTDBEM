@@ -79,7 +79,7 @@ Once you are all set up, run the following initial test to check everything work
 ./bin/2DTDBEM --test computeConvolutions
 ```
 
-The program options and help can then be viewed with `./bin/2DTDBEM`.
+The program options and help can be viewed with `./bin/2DTDBEM`.
 
 
 [BEUT]: https://github.com/dan-phd/BEUT
