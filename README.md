@@ -56,7 +56,7 @@ Edit the user environment variables for your machine to include the directories 
 
 To run the code using Visual Studio in Windows, open the `2DTDBEM.sln` file located in the top directory.
 
-Make sure that the correct solution platform is being used (Win32 or x64) and check the following settings are configured correctly:
+Make sure that the correct solution platform is being used (Win32 or x64) and check the following settings are configured correctly (only 64 bit Windows has been tested):
 * Configuration Properties -\> C/C++ -\> General -\> Additional Include Directories:
  * `$(ARMADILLO_ROOT)\include`
  * `$(MATIO_ROOT)\include`
@@ -78,6 +78,8 @@ Once you are all set up, run the following initial test to check everything work
 ```
 ./bin/2DTDBEM --test computeConvolutions
 ```
+
+The program options and help can then be viewed with `./bin/2DTDBEM`.
 
 
 [BEUT]: https://github.com/dan-phd/BEUT
