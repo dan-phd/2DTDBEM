@@ -8,7 +8,8 @@ This implementation in C++ computes the 2D TDBEM operators, and is intended to b
 The project repository has the following directory structure:
 * 2DTDBEM - contains the license, readme and install script
  * 2DTDBEM - contains the source code and CMakeLists file
- * build - where the built binaries go
+ * bin - where the built binaries go
+ * build - where any temporary files go used for building the source
  * CMake - additional tools for CMake
  * input - where the input Matlab files go
  * results - where the output Matlab files go
@@ -50,9 +51,12 @@ The program options can then be viewed with `./bin/2DTDBEM`.
 If you get `error wile loading shared libraries`, use `export LD_LIBRARY_PATH=/usr/local/lib/` for root users, or `export LD_LIBRARY_PATH=/home/<local_lib_folder>/lib` otherwise.
 
 ### Windows
-First download and unzip the armadillo and MatIO libraries to a low level directory (such as `C:\build`).
+If you have a 64 bit version of Windows, and do not need to modify the code, the built executable with dependancies is located in the `bin folder`. To run the program, open the command prompt in the root `2DTDBEM` directory and run `bin\2DTDBEM`.
 
-Edit the user environment variables for your machine to include the directories to the unzipped libraries in variables named `ARMADILLO_ROOT` and `MATIO_ROOT`.
+If this does not work, or you require building an updated version of the code, the following instructions should be followed.
+
+First download and unzip the armadillo and MatIO libraries to a low level directory (such as `C:\build`).
+Then edit the user environment variables for your machine to include the directories to the unzipped libraries in variables named `ARMADILLO_ROOT` and `MATIO_ROOT`.
 
 To run the code using Visual Studio in Windows, open the `2DTDBEM.sln` file located in the top directory.
 
@@ -74,12 +78,17 @@ To run the application straight from Visual Studio, you can append program argum
 can then be run without the debugger by pressing `Ctrl` + `F5`.
 
 ## Beginning test
-Once you are all set up, run the following initial test to check everything works:
+Once you are all set up, run the following initial test from the root `2DTDBEM` directory to check everything works;
+In Linux:
 ```
 ./bin/2DTDBEM --test computeConvolutions
 ```
+In Windows:
+```
+bin\2DTDBEM --test computeConvolutions
+```
 
-The program options and help can be viewed with `./bin/2DTDBEM`.
+The program options and help can be viewed with `./bin/2DTDBEM` in Linux, or `bin\2DTDBEM` in Windows.
 
 
 [BEUT]: https://github.com/dan-phd/BEUT
