@@ -51,7 +51,7 @@ The program options can then be viewed with `./bin/2DTDBEM`.
 If you get `error wile loading shared libraries`, use `export LD_LIBRARY_PATH=/usr/local/lib/` for root users, or `export LD_LIBRARY_PATH=/home/<local_lib_folder>/lib` otherwise.
 
 ### Windows
-If you have a 64 bit version of Windows, and do not need to modify the code, the built executable with dependancies is located in the `bin folder`. To run the program, open the command prompt in the root `2DTDBEM` directory and run `bin\2DTDBEM`.
+If you have a 64 bit version of Windows, and do not need to modify the code, the built executable with dependencies is located in the `bin` folder. To run the program, open the command prompt in the root `2DTDBEM` directory and run `bin\2DTDBEM`.
 
 If this does not work, or you require building an updated version of the code, the following instructions should be followed.
 
@@ -78,17 +78,20 @@ To run the application straight from Visual Studio, you can append program argum
 can then be run without the debugger by pressing `Ctrl` + `F5`.
 
 ## Beginning test
-Once you are all set up, run the following initial test from the root `2DTDBEM` directory to check everything works;
+Once you are all set up, run the following initial tests from the root `2DTDBEM` directory to check everything works;
+
 In Linux:
 ```
 ./bin/2DTDBEM --test computeConvolutions
+./bin/2DTDBEM --file=cyl_res21 --timesteps=100 --quadrature_points=5
 ```
 In Windows:
 ```
 bin\2DTDBEM --test computeConvolutions
+bin\2DTDBEM --file=cyl_res21 --timesteps=100 --quadrature_points=5
 ```
 
-The program options and help can be viewed with `./bin/2DTDBEM` in Linux, or `bin\2DTDBEM` in Windows.
+The program options and help can be viewed with `./bin/2DTDBEM -h` in Linux, or `bin\2DTDBEM -h` in Windows.
 
 
 [BEUT]: https://github.com/dan-phd/BEUT
